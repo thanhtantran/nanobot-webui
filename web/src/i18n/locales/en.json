@@ -86,7 +86,8 @@
     "models": "Model List",
     "modelsEmpty": "No models added. Add models to enable quick selection when switching providers.",
     "modelsPlaceholder": "Enter model name, e.g. gpt-4o",
-    "modelsAdd": "Add"
+    "modelsAdd": "Add",
+    "modelsRequired": "Please add at least one model name"
   },
   "channels": {
     "title": "Channels",

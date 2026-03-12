@@ -84,7 +84,8 @@
     "configured": "設定済み",
     "notConfigured": "未設定",
     "save": "保存",
-    "saved": "保存されました"
+    "saved": "保存されました",
+    "modelsRequired": "少なくとも 1 つのモデル名を追加してください"
   },
   "channels": {
     "title": "チャンネル",

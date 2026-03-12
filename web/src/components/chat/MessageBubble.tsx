@@ -7,7 +7,7 @@ import type { ChatMessage } from "../../stores/chatStore";
 import { ToolCallCard } from "./ToolCallCard";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { useAuthStore } from "../../stores/authStore";
-import { Terminal, Info, ChevronDown, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Info, ChevronDown, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
 
 interface MessageBubbleProps {
   message: ChatMessage;

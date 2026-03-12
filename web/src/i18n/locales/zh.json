@@ -86,7 +86,8 @@
     "models": "可用模型列表",
     "modelsEmpty": "暂无模型，添加后切换提供商时可直接选择",
     "modelsPlaceholder": "输入模型名称，如 gpt-4o",
-    "modelsAdd": "添加"
+    "modelsAdd": "添加",
+    "modelsRequired": "请至少添加一个模型名称"
   },
   "channels": {
     "title": "通道",
