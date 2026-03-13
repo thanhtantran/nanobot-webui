@@ -53,11 +53,13 @@ export default function Chat() {
         typeof m.content === "string" &&
         m.content.trim().length > 0 &&
         // Hide redundant "Message sent to ..." tool result — reply is shown as assistant bubble
-        !(m.role === "tool" && m.name === "message")
+        !(m.role === "tool" && m.name === "message") &&
+        // Hide internal SubAgent bridge messages injected purely for LLM role-alternation
+        !(m.role === "system" && m.content === "[Background task progress]")
       )
       .map((m) => ({
         id: nanoid(),
-        role: m.role as "user" | "assistant" | "tool" | "system",
+        role: m.role as "user" | "assistant" | "tool" | "system" | "sub_tool",
         content: m.content as string,
         timestamp: m.timestamp ?? new Date().toISOString(),
         name: m.name ?? undefined,

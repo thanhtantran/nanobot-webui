@@ -3,12 +3,13 @@ import { persist } from "zustand/middleware";
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant" | "tool" | "system";
+  role: "user" | "assistant" | "tool" | "system" | "sub_tool";
   content: string;
   timestamp: string;
   isStreaming?: boolean;
   toolCalls?: ToolCallInfo[];
   name?: string; // tool result: the tool's name
+  isSubAgent?: boolean; // message originated from a background SubAgent
 }
 
 export interface ToolCallInfo {

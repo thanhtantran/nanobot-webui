@@ -7,7 +7,7 @@ import type { ChatMessage } from "../../stores/chatStore";
 import { ToolCallCard } from "./ToolCallCard";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { useAuthStore } from "../../stores/authStore";
-import { Info, ChevronDown, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Info, ChevronDown, ChevronRight, CheckCircle2, XCircle, Bot, Wrench } from "lucide-react";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -29,6 +29,65 @@ function splitThinking(content: string): { type: "text" | "thinking"; content: s
     parts.push({ type: "text", content: content.slice(lastIndex) });
   }
   return parts;
+}
+
+/** SubAgent tool-call progress block — indigo tinted, visually distinct from main agent tools */
+function SubAgentProgressBlock({ message }: { message: ChatMessage }) {
+  const isError = message.content.startsWith("Error:");
+  // Strip the leading "[↳ label] " prefix for the header display
+  const match = message.content.match(/^\[↳ (.+?)\] (.+)$/);
+  const label = match?.[1] ?? "SubAgent";
+  const hint = match?.[2] ?? message.content;
+  const isLong = hint.length > 300;
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className={cn(
+      "rounded-lg border text-xs overflow-hidden",
+      isError
+        ? "border-red-200/70 bg-red-50/40 dark:border-red-800/40 dark:bg-red-950/15"
+        : "border-indigo-200/60 bg-indigo-50/40 dark:border-indigo-800/30 dark:bg-indigo-950/20"
+    )}>
+      <button
+        onClick={() => isLong && setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-2 px-3 py-1.5 text-left rounded-lg transition-colors",
+          isLong && "hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 cursor-pointer",
+          !isLong && "cursor-default"
+        )}
+      >
+        <Bot className="h-3 w-3 shrink-0 text-indigo-400 dark:text-indigo-400" />
+        <span className="font-medium text-indigo-500/80 dark:text-indigo-400/80 truncate max-w-[80px]">
+          {label}
+        </span>
+        <span className="text-muted-foreground/50">·</span>
+        {isError
+          ? <XCircle className="h-3 w-3 shrink-0 text-red-500" />
+          : <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />}
+        <span className="font-mono font-medium text-foreground/70 truncate">
+          {hint}
+        </span>
+        <span className="ml-auto mr-1 shrink-0 text-[10px] text-muted-foreground/40">
+          {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+        {isLong && (
+          open
+            ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+            : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+        )}
+      </button>
+      {(open || !isLong) && hint.length > 80 && (
+        <div className="border-t border-indigo-200/40 dark:border-indigo-800/30 px-3 py-2">
+          <pre className={cn(
+            "max-h-48 overflow-y-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed",
+            isError ? "text-red-700/80 dark:text-red-300/70" : "text-muted-foreground/80"
+          )}>
+            {hint}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Tool execution result block — clean slate style, collapsible */
@@ -69,6 +128,54 @@ function ToolResultBlock({ message }: { message: ChatMessage }) {
       </button>
       {(open || !isLong) && (
         <div className="border-t border-border/40 px-3 py-2">
+          <pre className={cn(
+            "max-h-48 overflow-y-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed",
+            isError ? "text-red-700/80 dark:text-red-300/70" : "text-muted-foreground/80"
+          )}>
+            {message.content}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** SubAgent tool result block — indigo-tinted, collapsible, shows tool name + SubAgent badge */
+function SubAgentToolBlock({ message }: { message: ChatMessage }) {
+  const isError = message.content.startsWith("Error:");
+  const isLong = message.content.length > 300;
+  const [open, setOpen] = useState(false);
+  const toolName = message.name || "tool";
+
+  return (
+    <div className="rounded-lg border text-xs overflow-hidden border-indigo-200/60 bg-indigo-50/30 dark:border-indigo-800/40 dark:bg-indigo-950/15">
+      <button
+        onClick={() => isLong && setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-2 px-3 py-1.5 text-left rounded-lg transition-colors",
+          isLong && "hover:bg-indigo-100/40 dark:hover:bg-indigo-900/20 cursor-pointer",
+          !isLong && "cursor-default"
+        )}
+      >
+        <Bot className="h-3 w-3 shrink-0 text-indigo-400/80" />
+        <span className="font-medium text-indigo-500/80 dark:text-indigo-400/80">⤹︎ SubAgent</span>
+        <span className="text-muted-foreground/40">·</span>
+        <Wrench className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+        <span className="font-mono font-medium text-foreground/70 truncate">{toolName}</span>
+        {isError
+          ? <XCircle className="h-3 w-3 shrink-0 text-red-500" />
+          : <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />}
+        <span className="ml-auto mr-1 shrink-0 text-[10px] text-muted-foreground/40">
+          {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+        {isLong && (
+          open
+            ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+            : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+        )}
+      </button>
+      {(open || !isLong) && (
+        <div className="border-t border-indigo-200/40 dark:border-indigo-800/30 px-3 py-2">
           <pre className={cn(
             "max-h-48 overflow-y-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed",
             isError ? "text-red-700/80 dark:text-red-300/70" : "text-muted-foreground/80"
@@ -122,6 +229,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   // Hide redundant message() tool result — the reply is already shown as an assistant bubble
   if (message.role === "tool" && message.name === "message") {
     return null;
+  }
+
+  // SubAgent tool result (persisted from session, role="sub_tool")
+  if (message.role === "sub_tool") {
+    return <SubAgentToolBlock message={message} />;
+  }
+
+  // SubAgent progress — indigo-tinted block with bot icon
+  if (message.role === "tool" && message.isSubAgent) {
+    return <SubAgentProgressBlock message={message} />;
   }
 
   // Tool result — compact collapsible block (no avatar)

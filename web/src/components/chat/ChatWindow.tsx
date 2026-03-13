@@ -67,6 +67,18 @@ export function ChatWindow() {
         }
       } else if (msg.type === "progress") {
         setProgress(msg.content ?? "");
+      } else if (msg.type === "subagent_progress") {
+        // SubAgent tool-call hint — arrives after main agent's "done", so render
+        // as a persistent SubAgent bubble rather than the transient progress indicator.
+        if (msg.content?.trim()) {
+          addMessage({
+            id: nanoid(),
+            role: "tool",
+            content: msg.content,
+            timestamp: new Date().toISOString(),
+            isSubAgent: true,
+          });
+        }
       } else if (msg.type === "done") {
         setProgress("");
         setWaiting(false);

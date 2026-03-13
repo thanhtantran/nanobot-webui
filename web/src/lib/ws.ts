@@ -1,11 +1,12 @@
 import { useAuthStore } from "../stores/authStore";
 
-export type WsMessageType = "session_info" | "progress" | "done" | "error";
+export type WsMessageType = "session_info" | "progress" | "subagent_progress" | "done" | "error";
 
 export interface WsMessage {
   type: WsMessageType;
   content?: string;
   session_key?: string;
+  tool_hint?: boolean;
 }
 
 type MessageHandler = (msg: WsMessage) => void;
