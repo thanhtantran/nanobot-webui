@@ -277,6 +277,8 @@
     "port": "Port",
     "heartbeat": "Heartbeat",
     "heartbeatInterval": "Heartbeat Interval (s)",
+    "sendProgress": "Send Progress Messages to Channels",
+    "sendToolHints": "Send Tool Call Hints to Channels",
     "save": "Save",
     "saved": "Saved",
     "workspaceFiles": "Workspace Files",

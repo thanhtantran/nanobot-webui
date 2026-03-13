@@ -271,6 +271,8 @@
     "port": "端口",
     "heartbeat": "心跳",
     "heartbeatInterval": "心跳间隔（秒）",
+    "sendProgress": "发送进度消息到通道",
+    "sendToolHints": "发送工具提示到通道",
     "save": "保存",
     "saved": "保存成功",
     "workspaceFiles": "工作区文件",

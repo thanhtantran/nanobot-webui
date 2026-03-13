@@ -11,6 +11,8 @@ export interface AgentSettings {
   memory_window: number;
   reasoning_effort: string;
   workspace: string;
+  send_progress?: boolean;
+  send_tool_hints?: boolean;
 }
 
 export interface GatewayConfig {

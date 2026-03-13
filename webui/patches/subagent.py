@@ -73,6 +73,66 @@ def unregister_save_turn(chat_key: str) -> None:
     _save_turn_registry.pop(chat_key, None)
 
 
+async def _save_sub_tool_to_session(
+    subagent_mgr: Any,
+    session_key: str,
+    messages: list,
+) -> None:
+    """Save SubAgent tool-call chain to session as sub_tool messages.
+
+    Used for non-web channels (Feishu, Telegram, etc.) where no WebSocket
+    callback is registered.  Requires _session_manager to be injected onto
+    the SubagentManager instance by the AgentLoop patch below.
+    """
+    from datetime import datetime
+
+    session_mgr = getattr(subagent_mgr, "_session_manager", None)
+    if session_mgr is None:
+        return
+    try:
+        _TRUNCATE = 500
+        session = session_mgr.get_or_create(session_key)
+        session.messages.append({
+            "role": "system",
+            "content": "[Background task progress]",
+            "timestamp": datetime.now().isoformat(),
+        })
+        now = datetime.now().isoformat()
+        for m in messages[2:]:  # skip SubAgent system prompt + user task
+            role = m.get("role", "")
+            content = m.get("content") or ""
+            if role == "assistant" and m.get("tool_calls"):
+                session.messages.append({
+                    "role": "sub_tool",
+                    "content": content,
+                    "tool_calls": m["tool_calls"],
+                    "timestamp": now,
+                })
+            elif role == "tool":
+                if isinstance(content, str) and len(content) > _TRUNCATE:
+                    content = content[:_TRUNCATE] + "\n... (truncated)"
+                session.messages.append({
+                    "role": "sub_tool",
+                    "content": content,
+                    "tool_call_id": m.get("tool_call_id", ""),
+                    "name": m.get("name", ""),
+                    "timestamp": now,
+                })
+            elif role == "assistant":
+                if not content:
+                    continue
+                session.messages.append({
+                    "role": "assistant",
+                    "content": content,
+                    "timestamp": now,
+                })
+        session.updated_at = datetime.now()
+        session_mgr.save(session)
+        logger.debug("SubAgent sub_tool messages saved to session {}", session_key)
+    except Exception as exc:
+        logger.warning("Failed to save SubAgent messages to session {}: {}", session_key, exc)
+
+
 def apply() -> None:
     """Monkey-patch SubagentManager._run_subagent to emit progress events."""
     from nanobot.agent.subagent import SubagentManager
@@ -106,7 +166,7 @@ def apply() -> None:
                         channel=channel,
                         chat_id=chat_id,
                         content=text,
-                        metadata={"_progress": True, "_tool_hint": True},
+                        metadata={"_progress": True, "_tool_hint": True, "_subagent_hint": True},
                     ))
                 except Exception:
                     pass
@@ -221,19 +281,23 @@ def apply() -> None:
                         await save_cb(messages)
                     except Exception:
                         pass
+            else:
+                await _save_sub_tool_to_session(self, chat_key, messages)
             await self._announce_result(task_id, label, task, final_result, origin, "ok")
 
         except Exception as e:
             error_msg = f"Error: {str(e)}"
             logger.error("Subagent [{}] failed: {}", task_id, e)
+            messages.append({"role": "assistant", "content": error_msg})
             if channel == "web":
                 save_cb = _save_turn_registry.get(chat_key)
                 if save_cb:
                     try:
-                        messages.append({"role": "assistant", "content": error_msg})
                         await save_cb(messages)
                     except Exception:
                         pass
+            else:
+                await _save_sub_tool_to_session(self, chat_key, messages)
             await self._announce_result(task_id, label, task, error_msg, origin, "error")
 
     # -----------------------------------------------------------------------
@@ -273,9 +337,39 @@ def apply() -> None:
             # Fallback: if no callback registered, use original path (will warn Unknown channel)
             await _original_announce(self, task_id, label, task, result, origin, status)
         else:
-            # Non-web channels: keep original bus behaviour
-            await _original_announce(self, task_id, label, task, result, origin, status)
+            # Non-web channels: publish result directly to channel with _subagent_result metadata
+            # so channel patches can render a rich card.
+            status_icon = "✅" if status == "ok" else "❌"
+            content = f"{status_icon} **SubAgent: {label}**\n\n{result}"
+            try:
+                await self.bus.publish_outbound(OutboundMessage(
+                    channel=channel,
+                    chat_id=chat_id,
+                    content=content,
+                    metadata={"_subagent_result": True},
+                ))
+            except Exception as exc:
+                logger.warning("Subagent result publish to channel failed: {}", exc)
+                # Fallback: use original announce path (main agent summarises)
+                await _original_announce(self, task_id, label, task, result, origin, status)
 
     SubagentManager._run_subagent = _run_subagent_patched  # type: ignore[method-assign]
     SubagentManager._announce_result = _announce_result_patched  # type: ignore[method-assign]
     logger.debug("SubagentManager patched: _run_subagent + _announce_result")
+
+    # -----------------------------------------------------------------------
+    # Patch 3: AgentLoop.__init__ — inject self.sessions into the SubagentManager
+    # so _run_subagent_patched can save sub_tool messages for non-web channels.
+    # -----------------------------------------------------------------------
+    try:
+        from nanobot.agent.loop import AgentLoop
+        _original_loop_init = AgentLoop.__init__
+
+        def _agent_loop_init_patched(self, *args, **kwargs) -> None:  # type: ignore[override]
+            _original_loop_init(self, *args, **kwargs)
+            self.subagents._session_manager = self.sessions  # type: ignore[attr-defined]
+
+        AgentLoop.__init__ = _agent_loop_init_patched  # type: ignore[method-assign]
+        logger.debug("AgentLoop.__init__ patched: _session_manager injected into SubagentManager")
+    except Exception as exc:
+        logger.warning("Failed to patch AgentLoop.__init__: {}", exc)

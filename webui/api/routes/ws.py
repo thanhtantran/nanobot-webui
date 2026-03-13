@@ -121,11 +121,20 @@ async def ws_chat(websocket: WebSocket) -> None:
     # Patch MessageTool once so web-channel replies are captured (not dropped)
     _ensure_message_tool_patched(container)
 
+    is_admin = user.get("role") == "admin"
+
+    def _is_allowed_session(key: str) -> bool:
+        """Return True if the user is allowed to use this session key."""
+        if key.startswith(f"web:{user['id']}"):
+            return True
+        # Admins can view/chat in any channel session (feishu/telegram/etc.)
+        return is_admin
+
     # Determine or create session key
     requested_key: str | None = websocket.query_params.get("session")
     session_key = (
         requested_key
-        if requested_key and requested_key.startswith(f"web:{user['id']}")
+        if requested_key and _is_allowed_session(requested_key)
         else f"web:{user['id']}:{uuid.uuid4().hex[:8]}"
     )
 
@@ -152,7 +161,7 @@ async def ws_chat(websocket: WebSocket) -> None:
                 # Allow per-message session override so the client can switch sessions
                 # without reconnecting the WebSocket (used by the "new chat" button).
                 msg_session_key = raw.get("session_key")
-                if msg_session_key and msg_session_key.startswith(f"web:{user['id']}"):
+                if msg_session_key and _is_allowed_session(msg_session_key):
                     if msg_session_key != session_key:
                         session_key = msg_session_key
                         await websocket.send_json({"type": "session_info", "session_key": session_key})

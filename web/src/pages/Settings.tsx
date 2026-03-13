@@ -261,6 +261,8 @@ function AgentTab() {
   const [reasoningEffort, setReasoningEffort] = useState("__default__");
   const [workspace, setWorkspace] = useState("");
   const [agentInited, setAgentInited] = useState(false);
+  const [sendProgress, setSendProgress] = useState(true);
+  const [sendToolHints, setSendToolHints] = useState(false);
 
   // [AI:START] tool=copilot date=2026-03-12 author=chenweikang
   // 获取当前选中提供商的模型列表（必须在 useState 之后）
@@ -276,6 +278,8 @@ function AgentTab() {
     setMemoryWindow(String(agent.memory_window ?? ""));
     setReasoningEffort(agent.reasoning_effort || "__default__");
     setWorkspace(agent.workspace ?? "");
+    setSendProgress(agent.send_progress ?? true);
+    setSendToolHints(agent.send_tool_hints ?? false);
     setAgentInited(true);
   }
 
@@ -289,6 +293,8 @@ function AgentTab() {
       memory_window: memoryWindow ? Number(memoryWindow) : undefined,
       reasoning_effort: reasoningEffort && reasoningEffort !== "__default__" ? reasoningEffort : undefined,
       workspace: workspace || undefined,
+      send_progress: sendProgress,
+      send_tool_hints: sendToolHints,
     }, { onSuccess: () => toast.success(t("settings.saved")) });
   };
 
@@ -392,6 +398,16 @@ function AgentTab() {
                 <div className="space-y-1">
                   <Label>{t("settings.workspace")}</Label>
                   <Input value={workspace} onChange={(e) => setWorkspace(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch checked={sendProgress} onCheckedChange={setSendProgress} id="send-progress" />
+                  <Label htmlFor="send-progress">{t("settings.sendProgress")}</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={sendToolHints} onCheckedChange={setSendToolHints} id="send-tool-hints" />
+                  <Label htmlFor="send-tool-hints">{t("settings.sendToolHints")}</Label>
                 </div>
               </div>
               <Button onClick={handleSaveAgent} disabled={updateAgent.isPending}>{t("settings.save")}</Button>
