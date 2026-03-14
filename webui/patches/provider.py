@@ -207,6 +207,8 @@ def apply() -> None:
                 return await _call_responses_api(self, messages, tools, model, max_tokens, temperature)
 
             _write_debug_log(self.api_base, messages, tools)
+            # 打印消息长度和 tools 长度，帮助调试
+            _logger.debug("LLM request '{}' messages_len={} tools_len={}", self.api_base, len(messages), len(tools) if tools else 0)
             result: LLMResponse = await original_chat(
                 self, messages, tools, model, max_tokens, temperature, reasoning_effort
             )
