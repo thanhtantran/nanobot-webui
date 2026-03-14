@@ -5,6 +5,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS keyboard / scroll lock:
+   position:fixed + overflow:hidden on body prevents iOS from scrolling the
+   document when the keyboard opens, which would otherwise displace the
+   position:fixed AppLayout container and produce a blank viewport. */
+html {
+  overflow: hidden;
+  height: 100%;
+}
+body {
+  position: fixed;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
 @layer base {
   :root {
     /* === Light Theme — Nanobot orange palette === */
@@ -25,7 +45,7 @@
     --accent-foreground: 24 80% 30%;
     --destructive: 0 84% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 22% 86%;
+    --border: 30 18% 91%;
     --input: 30 22% 86%;
     --ring: 24 90% 50%;
     --radius: 0.5rem;
@@ -40,6 +60,11 @@
     --sidebar-section-label: 20 14% 52%;
     --sidebar-edge-shadow: 3px 0 20px rgba(120, 60, 0, 0.07);
     --sidebar-glass-opacity: 0.88;
+    /* Glass shadows — directional soft shadows replace hard borders */
+    --shadow-up:    0 -6px 24px rgba(100,60,10,0.07), 0 -1px 4px rgba(100,60,10,0.04);
+    --shadow-down:  0  6px 24px rgba(100,60,10,0.07), 0  1px 4px rgba(100,60,10,0.04);
+    --shadow-right: 6px 0  24px rgba(100,60,10,0.06), 1px 0  4px rgba(100,60,10,0.03);
+    --shadow-card:  0  2px 12px rgba(100,60,10,0.06), 0  1px  3px rgba(100,60,10,0.04);
   }
 
   .dark {
@@ -61,7 +86,7 @@
     --accent-foreground: 199 80% 78%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 215 20% 90%;
-    --border: 222 18% 22%;
+    --border: 222 18% 17%;
     --input: 222 18% 22%;
     --ring: 199 80% 55%;
     /* Sidebar — same hue family, slightly deeper than main bg */
@@ -75,6 +100,11 @@
     --sidebar-section-label: 215 12% 40%;
     --sidebar-edge-shadow: 3px 0 20px rgba(0, 0, 0, 0.35);
     --sidebar-glass-opacity: 0.88;
+    /* Glass shadows — darker for dark mode */
+    --shadow-up:    0 -6px 24px rgba(0,0,0,0.28), 0 -1px 4px rgba(0,0,0,0.18);
+    --shadow-down:  0  6px 24px rgba(0,0,0,0.28), 0  1px 4px rgba(0,0,0,0.18);
+    --shadow-right: 6px 0  24px rgba(0,0,0,0.32), 1px 0  4px rgba(0,0,0,0.20);
+    --shadow-card:  0  2px 12px rgba(0,0,0,0.22), 0  1px  3px rgba(0,0,0,0.15);
   }
 }
 
@@ -91,7 +121,17 @@
   }
 }
 
-/* Custom scrollbar */
+/* Prevent iOS Safari from zooming the page when an input gets focus.
+   iOS zooms when the focused element's font-size is below 16px.
+   This rule ensures every input/textarea/select at least reaches 16px
+   on mobile, overriding any component-level text-sm / text-xs class. */
+@media screen and (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

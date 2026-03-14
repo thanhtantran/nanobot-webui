@@ -65,29 +65,27 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stat cards — 2 cols on mobile, 4 cols on desktop */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.label}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground leading-snug">
-                    {stat.label}
-                  </CardTitle>
-                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", stat.iconBg)}>
+            <Card key={stat.label} className="overflow-hidden">
+              <CardContent className="p-3 sm:p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground leading-snug truncate">{stat.label}</p>
+                    {stat.value === null ? (
+                      <Skeleton className="mt-1.5 h-7 w-12" />
+                    ) : (
+                      <div className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">{stat.value}</div>
+                    )}
+                    <p className="mt-0.5 text-xs text-muted-foreground">{stat.sub}</p>
+                  </div>
+                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", stat.iconBg)}>
                     <Icon className={cn("h-4 w-4", stat.iconColor)} />
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {stat.value === null ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
-                )}
-                <p className="mt-0.5 text-xs text-muted-foreground">{stat.sub}</p>
               </CardContent>
             </Card>
           );
@@ -96,23 +94,23 @@ export default function Dashboard() {
 
       {/* Channel cards */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">{t("dashboard.channels")}</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between px-3 py-2.5 sm:px-6 sm:pb-3">
+          <CardTitle className="text-sm sm:text-base">{t("dashboard.channels")}</CardTitle>
           <Link to="/channels" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             {t("dashboard.manageChannels")}
           </Link>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3 sm:px-6">
           {loadingChannels ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full" />
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
           ) : !channels || channels.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {channels.map((ch) => {
                 const isRunning = ch.running;
                 const hasError = !!ch.error;

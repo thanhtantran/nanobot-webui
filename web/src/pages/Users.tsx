@@ -90,7 +90,7 @@ export default function Users() {
             <TableRow>
               <TableHead>{t("users.username")}</TableHead>
               <TableHead>{t("users.role")}</TableHead>
-              <TableHead className="w-20 text-right">Actions</TableHead>
+              <TableHead className="w-20 text-right">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

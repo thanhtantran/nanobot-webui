@@ -13,6 +13,7 @@
     "systemConfig": "システム設定",
     "collapse": "メニューを折りたたむ",
     "expand": "メニューを展開",
+    "more": "もっと見る",
     "section": {
       "general": "一般",
       "admin": "管理"
@@ -353,12 +354,18 @@
     "no": "いいえ",
     "refresh": "更新",
     "actions": "操作",
+    "status": "状態",
     "darkMode": "ダークモード",
     "lightMode": "ライトモード",
     "language": "言語",
     "chinese": "中文",
     "english": "English",
     "japanese": "日本語",
-    "optional": "オプション"
+    "optional": "オプション",
+    "dismiss": "無視"
+  },
+  "pwa": {
+    "updateAvailable": "新しいバージョンが利用可能です",
+    "reload": "今すぐ更新"
   }
 }

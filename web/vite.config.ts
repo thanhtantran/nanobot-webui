@@ -35,7 +35,7 @@ export default defineConfig({
         type: "module",
       },
       manifest: {
-        name: "Nanobot WebUI",
+        name: "Nanobot",
         short_name: "Nanobot",
         description: "Nanobot AI Agent Management Interface",
         theme_color: "#f97316",

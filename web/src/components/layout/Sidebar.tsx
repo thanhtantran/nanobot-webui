@@ -117,7 +117,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
       style={{
         background: "hsl(var(--sidebar-bg))",
-        borderRight: "1px solid hsl(var(--sidebar-border))",
+        boxShadow: "var(--sidebar-edge-shadow)",
       }}
     >
       {/* Logo + collapse toggle */}

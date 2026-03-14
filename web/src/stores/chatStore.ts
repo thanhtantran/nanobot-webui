@@ -25,6 +25,8 @@ interface ChatState {
   isWaiting: boolean;
   progressText: string;
   showToolMessages: boolean;
+  mobileShowChat: boolean;
+  setMobileShowChat: (v: boolean) => void;
   setCurrentSession: (key: string | null) => void;
   addMessage: (msg: ChatMessage) => void;
   appendAssistantText: (id: string, text: string) => void;
@@ -44,6 +46,9 @@ export const useChatStore = create<ChatState>()(
       isWaiting: false,
       progressText: "",
       showToolMessages: false,
+      mobileShowChat: false,
+
+      setMobileShowChat: (v) => set({ mobileShowChat: v }),
 
       setCurrentSession: (key) =>
         set((state) => ({

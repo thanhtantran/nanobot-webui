@@ -169,8 +169,8 @@ export default function CronJobs() {
                 <TableHead>{t("cron.name")}</TableHead>
                 <TableHead>{t("cron.schedule")}</TableHead>
                 <TableHead>{t("cron.nextRun")}</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-28 text-right">Actions</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="w-28 text-right">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

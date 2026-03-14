@@ -13,6 +13,7 @@
     "users": "Users",
     "collapse": "Collapse menu",
     "expand": "Expand menu",
+    "more": "More",
     "section": {
       "general": "General",
       "admin": "Admin"
@@ -375,12 +376,18 @@
     "search": "Search",    "yes": "Yes",
     "no": "No",    "refresh": "Refresh",
     "actions": "Actions",
+    "status": "Status",
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode",
     "language": "Language",
     "chinese": "中文",
     "english": "English",
     "japanese": "日本語",
-    "optional": "Optional"
+    "optional": "Optional",
+    "dismiss": "Dismiss"
+  },
+  "pwa": {
+    "updateAvailable": "A new version is available",
+    "reload": "Update now"
   }
 }

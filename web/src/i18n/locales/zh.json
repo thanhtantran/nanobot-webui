@@ -13,6 +13,7 @@
     "systemConfig": "系统配置",
     "collapse": "折叠菜单",
     "expand": "展开菜单",
+    "more": "更多",
     "section": {
       "general": "通用",
       "admin": "管理"
@@ -371,12 +372,18 @@
     "no": "否",
     "refresh": "刷新",
     "actions": "操作",
+    "status": "状态",
     "darkMode": "深色模式",
     "lightMode": "浅色模式",
     "language": "语言",
     "chinese": "中文",
     "english": "English",
     "japanese": "日本語",
-    "optional": "可选"
+    "optional": "可选",
+    "dismiss": "忽略"
+  },
+  "pwa": {
+    "updateAvailable": "发现新版本，点击立即更新",
+    "reload": "立即更新"
   }
 }

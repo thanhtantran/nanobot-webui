@@ -111,7 +111,7 @@ export function ChatInput({
   const canSend = (value.trim().length > 0 || attachments.filter((a) => a.url).length > 0) && !isUploading;
 
   return (
-    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="bg-background/85 backdrop-blur-xl" style={{ boxShadow: "var(--shadow-up)" }}>
       <div className="w-full px-4 py-3">
         <div className={cn(
           "relative flex flex-col rounded-2xl border bg-background shadow-sm transition-all",
@@ -159,7 +159,7 @@ export function ChatInput({
             onPaste={handlePaste}
             placeholder={t("chat.placeholder")}
             rows={1}
-            className="min-h-[52px] max-h-[160px] flex-1 resize-none border-0 bg-transparent px-4 py-3.5 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
+            className="min-h-[52px] max-h-[160px] flex-1 resize-none border-0 bg-transparent px-4 py-3.5 shadow-none focus-visible:ring-0 text-base leading-relaxed"
             disabled={!isWaiting && disabled}
           />
           <div className="flex items-center justify-between px-3 pb-2">

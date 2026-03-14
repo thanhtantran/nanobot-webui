@@ -194,13 +194,15 @@ export default function Channels() {
                       })}
                     </div>
                     {configEntries.length > 0 && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleSave(ch.name, ch.config)}
-                        disabled={update.isPending}
-                      >
-                        {t("channels.save")}
-                      </Button>
+                      <div className="flex justify-end sm:justify-start">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSave(ch.name, ch.config)}
+                          disabled={update.isPending}
+                        >
+                          {t("channels.save")}
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 )}

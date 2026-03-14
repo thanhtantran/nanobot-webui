@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, X } from "lucide-react";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -222,10 +223,12 @@ function ProvidersTab() {
                   </div>
                   {/* [AI:END] */}
                 </div>
-                <Button size="sm" onClick={() => handleSave(p)}
-                  disabled={update.isPending}>
-                  {t("providers.save")}
-                </Button>
+                <div className="flex justify-end sm:justify-start">
+                  <Button size="sm" onClick={() => handleSave(p)}
+                    disabled={update.isPending}>
+                    {t("providers.save")}
+                  </Button>
+                </div>
               </CardContent>
             )}
           </Card>
@@ -410,7 +413,9 @@ function AgentTab() {
                   <Label htmlFor="send-tool-hints">{t("settings.sendToolHints")}</Label>
                 </div>
               </div>
-              <Button onClick={handleSaveAgent} disabled={updateAgent.isPending}>{t("settings.save")}</Button>
+              <div className="flex justify-end sm:justify-start">
+                <Button onClick={handleSaveAgent} disabled={updateAgent.isPending}>{t("settings.save")}</Button>
+              </div>
             </>
           )}
         </CardContent>
@@ -445,7 +450,9 @@ function AgentTab() {
                   <Input type="number" value={heartbeatInterval} onChange={(e) => setHeartbeatInterval(e.target.value)} />
                 </div>
               )}
-              <Button onClick={handleSaveGateway} disabled={updateGateway.isPending}>{t("settings.save")}</Button>
+              <div className="flex justify-end sm:justify-start">
+                <Button onClick={handleSaveGateway} disabled={updateGateway.isPending}>{t("settings.save")}</Button>
+              </div>
             </>
           )}
         </CardContent>
@@ -496,10 +503,11 @@ function WorkspaceFileEditor({ name }: { name: string }) {
           <Textarea
             value={content ?? ""}
             onChange={(e) => handleChange(e.target.value)}
-            className="font-mono text-xs flex-1 min-h-[400px] resize-none"
+            className="font-mono text-xs flex-1 min-h-0 resize-none"
+            style={{ minHeight: "420px" }}
             spellCheck={false}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
             <Button size="sm" onClick={handleSave} disabled={save.isPending || !dirty}>
               {t("settings.save")}
             </Button>
@@ -513,8 +521,54 @@ function WorkspaceFileEditor({ name }: { name: string }) {
 
 function WorkspaceTab() {
   const { t } = useTranslation();
-  const [selected, setSelected] = useState("AGENTS.md");
+  const isMobile = useIsMobile();
+  const [selected, setSelected] = useState<string | null>(isMobile ? null : "AGENTS.md");
 
+  // Mobile: if no file selected, show file list; otherwise show editor with back button
+  if (isMobile) {
+    if (!selected) {
+      return (
+        <div className="flex flex-col gap-1">
+          {WORKSPACE_FILES.map((name) => (
+            <button
+              key={name}
+              onClick={() => setSelected(name)}
+              className="w-full text-left px-3 py-3 rounded-md transition-colors hover:bg-muted flex items-center justify-between"
+            >
+              <div>
+                <div className="text-sm font-mono font-medium leading-tight">{name}</div>
+                <div className="text-xs leading-tight mt-0.5 text-muted-foreground">{t(FILE_DESCRIPTIONS[name])}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-3 h-full">
+        <button
+          onClick={() => setSelected(null)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t("common.back")}
+        </button>
+        <Card className="flex flex-col flex-1 min-h-0">
+          <CardHeader className="pb-2 shrink-0">
+            <CardTitle className="text-sm font-mono">{selected}</CardTitle>
+            <CardDescription className="text-xs">{t(FILE_DESCRIPTIONS[selected])}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1 min-h-0">
+            <WorkspaceFileEditor key={selected} name={selected} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Desktop: side-by-side
+  const desktopSelected = selected ?? "AGENTS.md";
   return (
     <div className="flex gap-4 h-full">
       {/* Left nav */}
@@ -524,30 +578,28 @@ function WorkspaceTab() {
             key={name}
             onClick={() => setSelected(name)}
             className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
-              selected === name
+              desktopSelected === name
                 ? "bg-primary text-primary-foreground"
                 : "hover:bg-muted"
             }`}
           >
             <div className="text-sm font-mono font-medium leading-tight">{name}</div>
-            <div className={`text-xs leading-tight mt-0.5 ${selected === name ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+            <div className={`text-xs leading-tight mt-0.5 ${desktopSelected === name ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
               {t(FILE_DESCRIPTIONS[name])}
             </div>
           </button>
         ))}
-
-
       </div>
 
       {/* Right editor */}
       <div className="flex-1 min-w-0">
         <Card className="h-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-mono">{selected}</CardTitle>
-            <CardDescription className="text-xs">{t(FILE_DESCRIPTIONS[selected])}</CardDescription>
+            <CardTitle className="text-sm font-mono">{desktopSelected}</CardTitle>
+            <CardDescription className="text-xs">{t(FILE_DESCRIPTIONS[desktopSelected])}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col" style={{ height: "calc(100% - 72px)" }}>
-            <WorkspaceFileEditor key={selected} name={selected} />
+            <WorkspaceFileEditor key={desktopSelected} name={desktopSelected} />
           </CardContent>
         </Card>
       </div>
@@ -564,10 +616,10 @@ export default function Settings() {
 
   return (
     <Tabs value={tab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
-      <TabsList>
-        <TabsTrigger value="agent">{t("nav.settings")}</TabsTrigger>
-        <TabsTrigger value="providers">{t("nav.providers")}</TabsTrigger>
-        <TabsTrigger value="workspace">{t("settings.workspaceFiles")}</TabsTrigger>
+      <TabsList className="w-full sm:w-auto">
+        <TabsTrigger value="agent" className="flex-1 sm:flex-none">{t("nav.settings")}</TabsTrigger>
+        <TabsTrigger value="providers" className="flex-1 sm:flex-none">{t("nav.providers")}</TabsTrigger>
+        <TabsTrigger value="workspace" className="flex-1 sm:flex-none">{t("settings.workspaceFiles")}</TabsTrigger>
       </TabsList>
       <TabsContent value="agent" className="mt-4"><AgentTab /></TabsContent>
       <TabsContent value="providers" className="mt-4"><ProvidersTab /></TabsContent>
