@@ -159,6 +159,10 @@ def webui(
         help="Run in the background and return immediately. "
              "PID written to ~/.nanobot/webui.pid, logs to ~/.nanobot/webui.log.",
     ),
+    log_level: str = typer.Option(
+        "DEBUG", "--log-level", "-l",
+        help="Log level: DEBUG, INFO, WARNING, ERROR (default: DEBUG)",
+    ),
 ):
     """Start the nanobot WebUI (and optionally the gateway) in a single process."""
     if ctx.invoked_subcommand is not None:
@@ -172,6 +176,7 @@ def webui(
             workspace=workspace,
             config_path=config_path,
             no_gateway=no_gateway,
+            log_level=log_level,
         )
         return
 
@@ -182,7 +187,6 @@ def webui(
     if no_gateway:
         # Minimal mode: webui HTTP server only, no agent/channels.
         # The user is expected to have a nanobot gateway running separately.
-        import uvicorn
         from nanobot.config.loader import load_config, set_config_path
         from pathlib import Path as _Path
 
@@ -262,6 +266,7 @@ def webui(
             gateway_port=gateway_port,
             web_host=host,
             workspace=workspace,
+            log_level=log_level,
         ))
 
 
@@ -333,6 +338,7 @@ def _start_daemon(
     workspace: Optional[str],
     config_path: Optional[str],
     no_gateway: bool,
+    log_level: str = "DEBUG",
 ) -> None:
     """Spawn a detached nanobot-webui process and record its PID."""
     import shutil
@@ -360,6 +366,8 @@ def _start_daemon(
         cmd += ["--config", config_path]
     if no_gateway:
         cmd += ["--no-gateway"]
+    if log_level and log_level.upper() != "DEBUG":
+        cmd += ["--log-level", log_level]
     # Note: --daemon is intentionally omitted so the child runs in the foreground
 
     log = _log_file()
@@ -414,6 +422,9 @@ def _make_standalone_parser():
                    help="Path to config file")
     p.add_argument("--no-gateway", action="store_true", dest="no_gateway",
                    help="Start WebUI only (skip gateway/agent)")
+    p.add_argument("--log-level", default="DEBUG", dest="log_level",
+                   metavar="LEVEL",
+                   help="Log level: DEBUG, INFO, WARNING, ERROR (default: DEBUG)")
     return p
 
 
@@ -431,4 +442,5 @@ async def _run_all_from_args(args) -> None:
         gateway_port=args.gateway_port,
         web_host=args.host,
         workspace=args.workspace,
+        log_level=getattr(args, "log_level", "DEBUG"),
     )

@@ -1,6 +1,36 @@
 """[Session] patches — extend session lifecycle for WebUI-initiated deletion."""
 
 from __future__ import annotations
+import json
+from pathlib import Path
+
+
+def _last_message_preview(path: Path) -> str | None:
+    """Read the last user/assistant message from a session JSONL file for sidebar preview."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            chunk = min(4096, size)
+            f.seek(max(0, size - chunk))
+            tail = f.read().decode("utf-8", errors="ignore")
+        for line in reversed(tail.splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                if data.get("role") in ("user", "assistant"):
+                    content = data.get("content") or ""
+                    if isinstance(content, str):
+                        text = content.strip()
+                        if text and text != "[Background task progress]" and not text.startswith("<think>"):
+                            return text[:80] + ("\u2026" if len(text) > 80 else "")
+            except json.JSONDecodeError:
+                continue
+    except Exception:
+        pass
+    return None
 
 
 def apply() -> None:
@@ -21,6 +51,21 @@ def apply() -> None:
             path.unlink()
 
     _session_manager.SessionManager.delete = _session_delete  # type: ignore[attr-defined]
+
+    # --- list_sessions with last_message preview --------------------------
+    # The installed nanobot-ai package's list_sessions does not include
+    # last_message.  Wrap it to append the preview computed from disk.
+    _orig_list_sessions = _session_manager.SessionManager.list_sessions
+
+    def _list_sessions_patched(self):  # type: ignore[override]
+        sessions = _orig_list_sessions(self)
+        for s in sessions:
+            if "last_message" not in s or s["last_message"] is None:
+                path = Path(s["path"]) if "path" in s else self._get_session_path(s["key"])
+                s["last_message"] = _last_message_preview(path)
+        return sessions
+
+    _session_manager.SessionManager.list_sessions = _list_sessions_patched  # type: ignore[method-assign]
 
     # --- sub_tool filter --------------------------------------------------
     # "sub_tool" is a synthetic role stored in session JSONL purely for UI

@@ -13,10 +13,19 @@ from pathlib import Path
 
 from setuptools import setup
 from setuptools.command.build_py import build_py
+from setuptools.command.sdist import sdist
 
 
 class BuildPyWithFrontend(build_py):
     """Extend build_py to compile the React frontend before packaging."""
+
+    def run(self) -> None:
+        _build_frontend()
+        super().run()
+
+
+class SdistWithFrontend(sdist):
+    """Extend sdist to compile the React frontend before creating the source distribution."""
 
     def run(self) -> None:
         _build_frontend()
@@ -59,4 +68,4 @@ def _build_frontend() -> None:
         print("[setup] Frontend build OK ✓", file=sys.stderr)
 
 
-setup(cmdclass={"build_py": BuildPyWithFrontend})
+setup(cmdclass={"build_py": BuildPyWithFrontend, "sdist": SdistWithFrontend})

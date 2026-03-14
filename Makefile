@@ -13,6 +13,18 @@ dev:
 .PHONY: build-web
 build-web:
 	cd web && bun install --frozen-lockfile && bun run build
+	rm -rf webui/web/dist
+	cp -r web/dist webui/web/dist
+
+# ── Python package ─────────────────────────────
+# Full dist: builds frontend first, then creates sdist + wheel
+.PHONY: dist
+dist: build-web
+	python -m build
+
+.PHONY: dist-wheel
+dist-wheel: build-web
+	python -m build --wheel
 
 # ── Docker (single-platform, local) ───────────
 .PHONY: build

@@ -86,8 +86,13 @@ async def main(
     gateway_port: int | None = None,
     web_host: str = "0.0.0.0",
     workspace: str | None = None,
+    log_level: str = "DEBUG",
 ) -> None:
+    import sys as _sys
     from loguru import logger
+
+    logger.remove()
+    logger.add(_sys.stderr, level=log_level.upper())
 
     from nanobot.agent.loop import AgentLoop
     from nanobot.bus.queue import MessageBus
@@ -280,6 +285,9 @@ def main_cli() -> None:
                         help="Path to config file")
     parser.add_argument("--daemon", "-d", action="store_true", default=False,
                         help="Run in the background (PID → ~/.nanobot/webui.pid)")
+    parser.add_argument("--log-level", default="DEBUG", dest="log_level",
+                        metavar="LEVEL",
+                        help="Log level: DEBUG, INFO, WARNING, ERROR (default: DEBUG)")
     args = parser.parse_args()
 
     if args.daemon:
@@ -303,6 +311,7 @@ def main_cli() -> None:
         gateway_port=args.gateway_port,
         web_host=args.host,
         workspace=args.workspace,
+        log_level=args.log_level,
     ))
 
 
