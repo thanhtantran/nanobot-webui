@@ -84,7 +84,8 @@ release-dated:
 
 # ── Python PyPI publish ───────────────────────
 .PHONY: build-py
-build-py:
+build-py: build-web
+	cp -r web/dist webui/web/dist
 	rm -rf dist/ build/ nanobot_webui.egg-info/
 	python -m build
 
@@ -95,6 +96,10 @@ publish: build-py
 .PHONY: publish-test
 publish-test: build-py
 	twine upload --repository testpypi dist/*
+
+.PHONY: test-release
+test-release:
+	bash scripts/test-release.sh
 
 # Build Python package and Docker image together
 # Usage: make release-all VERSION=0.1.2
@@ -122,6 +127,7 @@ help:
 	@echo "  make build-py       Build Python package (wheel + sdist)"
 	@echo "  make publish        Publish to PyPI (requires .pypirc)"
 	@echo "  make publish-test   Publish to Test PyPI (requires .pypirc)"
+	@echo "  make test-release   Publish to TestPyPI → install → smoke test"
 	@echo "  make release-all VERSION=x  Publish PyPI + Docker + create git tag"
 	@echo ""
 	@echo "  Override defaults:"

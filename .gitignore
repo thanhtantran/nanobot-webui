@@ -14,6 +14,7 @@ build
 *.log
 *.env
 *.venv
+*.venv-test*
 .DS_Store
 nanobot
 
