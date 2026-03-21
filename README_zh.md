@@ -60,7 +60,7 @@
 | **PWA 支持** | 可安装为桌面 / 主屏幕应用；后台自动检测新版本并提示一键更新 |
 | **移动端适配** | 响应式布局，针对 iOS Safari 键盘弹出做专项适配，确保输入框始终可见 |
 | **深色模式** | 亮色 / 暗色一键切换，首次访问自动跟随系统偏好；暗色方案采用暖色调以匹配品牌色 |
-| **多语言（i18n）** | 内置中文、英文、日文三套界面语言，可实时切换 |
+| **多语言（i18n）** | 内置 7 套界面语言：中文、繁體中文、English、日本語、한국어、Deutsch、Français，自动根据浏览器语言 / 时区检测，支持子菜单实时切换 |
 
 ---
 
@@ -85,7 +85,7 @@ nanobot webui --port 9090
 nanobot webui --daemon
 ```
 
-浏览器访问 **http://localhost:18780**，默认账号：**admin / nanobot**，首次登录后请立即修改密码。
+浏览器访问 **http://localhost:18780** - 默认账号：**admin / nanobot**，首次登录后请立即修改密码。
 
 ---
 
@@ -123,7 +123,7 @@ docker compose logs -f
 docker compose down
 ```
 
-浏览器访问 **http://localhost:18780**，默认账号：**admin / nanobot**，请在首次登录后立即修改密码。
+浏览器访问 **http://localhost:18780** — 默认账号：**admin / nanobot**，请在首次登录后立即修改密码。
 
 > **数据目录：** 所有配置、会话及工作区文件保存在宿主机的 `~/.nanobot-webui` 目录（映射到容器内的 `/root/.nanobot`）。
 
