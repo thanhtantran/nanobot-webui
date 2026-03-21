@@ -1,5 +1,22 @@
 # Release Notes
 
+## v0.2.2 — 2026-03-21
+
+**Multi-Session Chat**
+- Support concurrent multi-session chat — switch between sessions without losing in-flight messages
+- Add message revoke support: retract the last sent message and re-edit before resending
+- Fix duplicate messages and off-by-one revoke index issues introduced in #8
+
+**i18n — 7 UI Languages**
+- Add 4 new locale files: 繁體中文 (zh-TW), 한국어 (ko), Deutsch (de), Français (fr)
+- Auto-detect language from browser locale and timezone (e.g. Asia/Taipei → zh-TW, Asia/Seoul → ko)
+- Replace 7-language cycle toggle with a `DropdownMenuSub` picker in Sidebar and MobileTopBar
+- Login page dropdown lists all 7 languages directly
+- Fix login 401 error: skip page-redirect when the failing request is `/auth/login` itself, so the toast error shows correctly instead of refreshing the page
+- Fix login form validation: remove HTML5 `required` attribute; use JS guard with i18n toast to avoid browser-native non-localized bubble
+
+---
+
 ## v0.2.1 — 2026-03-18
 
 **Config Editor**
