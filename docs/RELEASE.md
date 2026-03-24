@@ -1,5 +1,31 @@
 # Release Notes
 
+## v0.2.4 — 2026-03-24
+
+**Cron Jobs History**
+- Add execution history viewer for Cron jobs — trace all past executions and deep-link to session logs
+- Support searching and filtering cron job execution records by job ID or message content
+- Support persistent session storage for each cron run (`cron:<job_id>:<ts>`) instead of overwriting a single session
+
+**WeChat Channel Enhancement**
+- Support outbound media messages — AI can now send images, videos, and files directly to WeChat users
+- Implement client-side AES-128-ECB encryption for WeChat CDN uploads (matching official protocol)
+- Auto-detect media type from file extension and handle fallback text notification on failure
+- Improve login flow: add `nanobot channels login weixin` command for manual authentication
+
+**Web Performance & UX**
+- Implement **Lazy Loading** for all main pages using `React.lazy` and `Suspense`
+- Introduce `TransitionLink` to prevent Suspense fallback flickering during navigation — UI stays responsive while loading chunks
+- Optimize bundle size via Vite manual chunks: separate markdown rendering, UI primitives, and icons into dedicated chunks
+- Localize multi-language labels for WeChat login and cron history (en, zh, ja, etc.)
+
+**Infrastructure & Storage**
+- Fallback local storage: `upload_to_s3` now supports saving to the local workspace when S3 is not configured
+- Update [Dockerfile](Dockerfile) with improved node/npm mirror settings and explicit version pinning
+- Refactor CLI: remove redundant gateway parameters and optimize WeChat/storage logic
+
+---
+
 ## v0.2.3 — 2026-03-22
 
 **WeChat Channel & QR Login**
