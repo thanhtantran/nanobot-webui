@@ -18,7 +18,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     && pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ uv
 
 ENV VERSION=0.2.3
-RUN uv pip install --system --no-cache nanobot-webui==${VERSION}
+RUN uv pip install --system -i https://mirrors.aliyun.com/pypi/simple/ nanobot-webui==${VERSION}
 
 EXPOSE 18780
-CMD ["python3", "nanobot", "webui", "--port", "18780"]
+CMD ["nanobot", "webui", "--port", "18780"]
