@@ -23,11 +23,11 @@ class ServiceContainer:
     bus: MessageBus
     agent: AgentLoop
     channels: ExtendedChannelManager
-    webui_only: bool = False
     session_manager: SessionManager
     cron: CronService
     heartbeat: HeartbeatService
     make_provider: Callable = field(default=lambda cfg: None)
+    webui_only: bool = False
 
     def reload_provider(self) -> None:
         """Hot-swap the LLM provider and all runtime settings on agent and heartbeat."""

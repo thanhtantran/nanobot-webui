@@ -37,15 +37,19 @@ class ExtendedChannelManager(ChannelManager):
         In normal mode delegates to the parent (checks channel.is_running).
         In webui_only mode the channels are managed by an external process, so
         we derive ``running`` from whether the channel is enabled in config.
+        We iterate config directly (not self.channels) so channels that failed
+        to instantiate are still reported correctly.
         """
         if not self.webui_only:
             return super().get_status()
 
         result: dict = {}
-        for name, channel in self.channels.items():
-            ch_cfg = getattr(self.config.channels, name, None)
-            enabled = bool(ch_cfg and getattr(ch_cfg, "enabled", False))
-            result[name] = {"enabled": enabled, "running": enabled}
+        for name, ch_dict in self.config.channels.model_dump().items():
+            # Skip non-channel scalar fields (send_progress, send_tool_hints, …)
+            if not isinstance(ch_dict, dict):
+                continue
+            if ch_dict.get("enabled", False):
+                result[name] = {"enabled": True, "running": True}
         return result
 
     def update_config(self, new_config: Config) -> None:

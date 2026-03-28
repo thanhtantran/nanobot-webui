@@ -267,6 +267,10 @@ def main_cli() -> None:
     parser.add_argument("--log-level", default="DEBUG", dest="log_level",
                         metavar="LEVEL",
                         help="Log level: DEBUG, INFO, WARNING, ERROR (default: DEBUG)")
+    parser.add_argument("--webui-only", action="store_true", default=False,
+                        dest="webui_only",
+                        help="Start only the WebUI HTTP server (no IM channels / heartbeat). "
+                             "Use this when nanobot is already running as a separate process.")
     args = parser.parse_args()
 
     if args.daemon:
@@ -288,6 +292,7 @@ def main_cli() -> None:
         web_host=args.host,
         workspace=args.workspace,
         log_level=args.log_level,
+        webui_only=args.webui_only,
     ))
 
 
