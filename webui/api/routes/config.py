@@ -251,6 +251,33 @@ async def import_workspace(
     return {"ok": True, "backup": backup_path}
 
 
+@router.get("/logs")
+def get_logs(
+    _admin: Annotated[dict, Depends(require_admin)],
+    lines: int = 500,
+    keyword: str = ""
+) -> dict[str, str]:
+    """Get the last N lines of the WebUI log file, optionally filtered by keyword."""
+    from nanobot.config.loader import get_config_path
+    from collections import deque
+    
+    log_file = get_config_path().parent / "webui.log"
+    if not log_file.exists():
+        return {"content": "Log file not found.", "path": str(log_file)}
+    
+    try:
+        # Use collections.deque for efficient reading of the last N lines
+        # This avoids subprocess calls and is safer/more cross-platform
+        with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+            if keyword:
+                # Filter lines on the fly
+                last_lines = deque((line for line in f if keyword in line), maxlen=lines)
+            else:
+                last_lines = deque(f, maxlen=lines)
+        return {"content": "".join(last_lines), "path": str(log_file)}
+    except Exception as e:
+        return {"content": f"Error reading logs: {e}", "path": str(log_file)}
+
 @router.get("/raw")
 async def get_raw_config(
     _admin: Annotated[dict, Depends(require_admin)],

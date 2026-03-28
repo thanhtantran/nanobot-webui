@@ -184,3 +184,11 @@ export async function uploadFile(file: File): Promise<string> {
   });
   return res.data.url;
 }
+
+export function useLogs(lines: number = 500, keyword: string = "") {
+  return useQuery<{ content: string, path?: string }>({
+    queryKey: ["config", "logs", lines, keyword],
+    queryFn: () => api.get(`/config/logs?lines=${lines}&keyword=${encodeURIComponent(keyword)}`).then((r) => r.data),
+    refetchInterval: 2000, // auto refresh every 2 seconds
+  });
+}

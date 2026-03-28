@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Download, Upload, FileJson, RefreshCw, Save, CheckCircle2, AlertCircle, Database } from "lucide-react";
+import { Download, Upload, FileJson, RefreshCw, Save, CheckCircle2, AlertCircle, Database, ScrollText, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 
@@ -12,7 +12,7 @@ import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { JsonEditor } from "../components/ui/json-editor";
-import { useRawConfig, useSaveRawConfig, exportWorkspace, useImportWorkspace, useS3Config, useSaveS3Config, type S3Config } from "../hooks/useConfig";
+import { useRawConfig, useSaveRawConfig, exportWorkspace, useImportWorkspace, useS3Config, useSaveS3Config, useLogs, type S3Config } from "../hooks/useConfig";
 
 // ── JSON validation helper ─────────────────────────────────────────────────
 
@@ -357,6 +357,98 @@ function ImportExportPanel() {
   );
 }
 
+// ── Logs Panel ────────────────────────────────────────────────────────────────
+
+function LogsPanel() {
+  const { t } = useTranslation();
+  const [lines, setLines] = useState(500);
+  const [keyword, setKeyword] = useState("");
+  const [debouncedKeyword, setDebouncedKeyword] = useState("");
+  const { data, isLoading, refetch, isRefetching } = useLogs(lines, debouncedKeyword);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  // Debounce search keyword
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 500);
+    return () => clearTimeout(timer);
+  }, [keyword]);
+
+  useEffect(() => {
+    if (autoScroll && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [data?.content, autoScroll]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
+    setAutoScroll(isAtBottom);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ScrollText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-sm font-medium text-muted-foreground break-all">
+            {data?.path || "~/.nanobot/webui.log"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder={t("sysconfig.searchLogs")}
+              className="h-8 w-[150px] sm:w-[200px] pl-8 text-xs"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="auto-scroll" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">{t("sysconfig.autoScroll")}</Label>
+            <Switch
+              id="auto-scroll"
+              checked={autoScroll}
+              onCheckedChange={setAutoScroll}
+              className="scale-75 data-[state=checked]:bg-primary shrink-0"
+            />
+          </div>
+          <select 
+            className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm"
+            value={lines}
+            onChange={(e) => setLines(Number(e.target.value))}
+          >
+            <option value={100}>100 {t("sysconfig.lines")}</option>
+            <option value={500}>500 {t("sysconfig.lines")}</option>
+            <option value={1000}>1000 {t("sysconfig.lines")}</option>
+            <option value={5000}>5000 {t("sysconfig.lines")}</option>
+          </select>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => refetch()} disabled={isLoading || isRefetching}>
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+            {t("common.refresh")}
+          </Button>
+        </div>
+      </div>
+      
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="rounded-md border bg-muted/30 p-4 h-[600px] overflow-auto font-mono text-xs whitespace-pre-wrap break-all"
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            {t("common.loading")}
+          </div>
+        ) : (
+          data?.content || <span className="text-muted-foreground italic">{t("sysconfig.noLogs")}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SystemConfig() {
@@ -368,6 +460,7 @@ export default function SystemConfig() {
         <TabsTrigger value="editor">{t("sysconfig.tabEditor")}</TabsTrigger>
         <TabsTrigger value="s3">{t("sysconfig.tabS3")}</TabsTrigger>
         <TabsTrigger value="backup">{t("sysconfig.tabBackup")}</TabsTrigger>
+        <TabsTrigger value="logs">{t("sysconfig.tabLogs")}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="editor" className="mt-4">
@@ -380,6 +473,10 @@ export default function SystemConfig() {
 
       <TabsContent value="backup" className="mt-4">
         <ImportExportPanel />
+      </TabsContent>
+
+      <TabsContent value="logs" className="mt-4">
+        <LogsPanel />
       </TabsContent>
     </Tabs>
   );
