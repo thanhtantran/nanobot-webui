@@ -26,7 +26,7 @@ def make_provider_patched(config):
     provider_name: str = config.get_provider_name(model)
     p = config.get_provider(model)
     spec = find_by_name(provider_name) if provider_name else None
-    backend = spec.backend if spec else "openai_compat"
+    backend = getattr(spec, 'backend', None) or "openai_compat"
 
     # 1. Custom dynamically injected providers OR the built-in "custom" provider
     custom_providers = get_custom_providers()
