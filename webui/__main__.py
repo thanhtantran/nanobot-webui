@@ -148,6 +148,7 @@ async def main(
 
     # --------------------------------------------------------------- channels
     channels = ExtendedChannelManager(config, bus)
+    channels.webui_only = webui_only
 
     def _pick_heartbeat_target() -> tuple[str, str]:
         enabled = set(channels.enabled_channels)
@@ -203,6 +204,7 @@ async def main(
         cron=cron,
         heartbeat=heartbeat,
         make_provider=make_provider_patched,
+        webui_only=webui_only,
     )
 
     if channels.enabled_channels:

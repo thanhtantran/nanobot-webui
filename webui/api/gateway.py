@@ -23,6 +23,7 @@ class ServiceContainer:
     bus: MessageBus
     agent: AgentLoop
     channels: ExtendedChannelManager
+    webui_only: bool = False
     session_manager: SessionManager
     cron: CronService
     heartbeat: HeartbeatService
