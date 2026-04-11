@@ -48,8 +48,9 @@ export default function Chat() {
   useEffect(() => {
     if (!currentSessionKey || !historyLoaded) return;
     const serverCount = (sessionMsgs ?? []).length;
-    // Run on: session switch OR server has more messages than last known count
-    if (loadedKeyRef.current === currentSessionKey && serverCount <= loadedCountRef.current) return;
+    // Run on: session switch OR message count changed.
+    // Count can decrease after a session is deleted/recreated with the same key.
+    if (loadedKeyRef.current === currentSessionKey && serverCount === loadedCountRef.current) return;
     loadedKeyRef.current = currentSessionKey;
     loadedCountRef.current = serverCount;
     // Filter out empty messages only (assistant stubs with null/empty content).
@@ -72,29 +73,26 @@ export default function Chat() {
         name: m.name ?? undefined,
         serverIndex: m._serverIdx,
       }));
-    // Only overwrite if we got actual history (avoids wiping persisted messages on new empty sessions)
-    if (msgs.length > 0) {
-      // Preserve locally-added messages not present in server data.
-      // LLM errors are intentionally NOT saved to session by nanobot, so they must
-      // be kept from the store rather than reloaded. We identify them by two criteria:
-      //   1. Their ID was not part of the previous setMessages call (i.e. added via addMessage)
-      //   2. Their text content is not already covered by the new server data (no duplicates)
-      // NOTE: timestamp comparison is intentionally avoided — Python datetime.now() uses local
-      // time (no Z) while JS new Date().toISOString() uses UTC (with Z), making string
-      // comparison unreliable across timezones.
-      const prevIds = new Set(lastSetMsgsRef.current.map((m) => m.id));
-      // Only preserve locally-added error messages — they are never saved server-side.
-      // All other messages (including done responses) will be re-loaded from server data.
-      const localToPreserve = useChatStore.getState().messages.filter(
-        (m) =>
-          !prevIds.has(m.id) &&
-          m.role === "assistant" &&
-          m.content.startsWith("⚠️")
-      );
-      const merged = localToPreserve.length > 0 ? [...msgs, ...localToPreserve] : msgs;
-      lastSetMsgsRef.current = merged;
-      setMessages(merged);
-    }
+    // Preserve locally-added messages not present in server data.
+    // LLM errors are intentionally NOT saved to session by nanobot, so they must
+    // be kept from the store rather than reloaded. We identify them by two criteria:
+    //   1. Their ID was not part of the previous setMessages call (i.e. added via addMessage)
+    //   2. Their text content is not already covered by the new server data (no duplicates)
+    // NOTE: timestamp comparison is intentionally avoided — Python datetime.now() uses local
+    // time (no Z) while JS new Date().toISOString() uses UTC (with Z), making string
+    // comparison unreliable across timezones.
+    const prevIds = new Set(lastSetMsgsRef.current.map((m) => m.id));
+    // Only preserve locally-added error messages — they are never saved server-side.
+    // All other messages (including done responses) will be re-loaded from server data.
+    const localToPreserve = useChatStore.getState().messages.filter(
+      (m) =>
+        !prevIds.has(m.id) &&
+        m.role === "assistant" &&
+        m.content.startsWith("⚠️")
+    );
+    const merged = localToPreserve.length > 0 ? [...msgs, ...localToPreserve] : msgs;
+    lastSetMsgsRef.current = merged;
+    setMessages(merged);
   }, [currentSessionKey, historyLoaded, sessionMsgs, setMessages]);
 
   const isAdmin = user?.role === "admin";

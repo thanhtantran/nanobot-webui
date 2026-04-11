@@ -50,7 +50,9 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: (key: string) =>
       api.delete(`/sessions/${encodeURIComponent(key)}`).then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (_data, key) => {
+      qc.removeQueries({ queryKey: ["sessions", key, "messages"] });
+      qc.removeQueries({ queryKey: ["sessions", key, "memory"] });
       qc.invalidateQueries({ queryKey: ["sessions"] });
       toast.success(i18n.t("chat.sessionDeleted"));
     },
