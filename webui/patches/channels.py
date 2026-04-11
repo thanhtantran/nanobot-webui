@@ -65,7 +65,27 @@ def apply() -> None:
 
     try:
         from nanobot.channels.feishu import FeishuChannel
+        _original_fetch_bot_open_id = FeishuChannel._fetch_bot_open_id
         _original_fs_send = FeishuChannel.send
+
+        def _fetch_bot_open_id_patched(self):  # type: ignore[override]
+            """Gracefully degrade when lark-oapi lacks bot.v3 modules.
+
+            lark-oapi 1.5.x may not expose ``lark_oapi.api.bot.v3``. In that
+            case we return None so channel startup continues (only mention
+            matching accuracy is reduced).
+            """
+            try:
+                return _original_fetch_bot_open_id(self)
+            except ModuleNotFoundError as e:
+                if "lark_oapi.api.bot" in str(e):
+                    logger.warning(
+                        "Feishu SDK missing bot.v3 APIs ({}). Skip bot open_id fetch; "
+                        "channel will continue with fallback mention matching.",
+                        e,
+                    )
+                    return None
+                raise
 
         async def _feishu_send_patched(self, msg) -> None:  # type: ignore[override]
             if msg.metadata.get("_subagent_result") and msg.content and msg.content.strip():
@@ -97,6 +117,7 @@ def apply() -> None:
                     logger.error("Feishu SubAgent card send failed: {}", e)
             await _original_fs_send(self, msg)
 
+        FeishuChannel._fetch_bot_open_id = _fetch_bot_open_id_patched  # type: ignore[method-assign]
         FeishuChannel.send = _feishu_send_patched  # type: ignore[method-assign]
         logger.debug("FeishuChannel.send patched for SubAgent cards")
     except ImportError:

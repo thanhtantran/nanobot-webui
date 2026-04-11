@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -204,15 +205,38 @@ def webui_logs(
         typer.echo(f"Log file not found: {log}")
         raise typer.Exit(1)
 
-    if follow:
-        import subprocess
+    def _print_last_n(path: Path, n: int) -> int:
         try:
-            subprocess.run(["tail", "-f", "-n", str(lines), str(log)])
-        except KeyboardInterrupt:
-            pass
-    else:
-        import subprocess
-        subprocess.run(["tail", "-n", str(lines), str(log)])
+            all_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            all_lines = []
+        tail_lines = all_lines[-max(0, n):] if n > 0 else []
+        for line in tail_lines:
+            typer.echo(line)
+        return len(all_lines)
+
+    current_total = _print_last_n(log, lines)
+    if not follow:
+        return
+
+    try:
+        while True:
+            time.sleep(0.5)
+            try:
+                all_lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+            except Exception:
+                continue
+
+            if len(all_lines) < current_total:
+                # Log rotated/truncated: print from start.
+                current_total = 0
+
+            if len(all_lines) > current_total:
+                for line in all_lines[current_total:]:
+                    typer.echo(line)
+                current_total = len(all_lines)
+    except KeyboardInterrupt:
+        pass
 
 
 @webui_app.command("status")
@@ -247,7 +271,8 @@ def webui_stop() -> None:
                 break
         else:
             try:
-                os.kill(pid, _signal.SIGKILL)
+                sig_kill = getattr(_signal, "SIGKILL", _signal.SIGTERM)
+                os.kill(pid, sig_kill)
             except ProcessLookupError:
                 pass
     except ProcessLookupError:
@@ -386,7 +411,7 @@ def _start_daemon(
     typer.echo(f"\u2713 nanobot WebUI started in background (PID {proc.pid})")
     typer.echo(f"  URL : http://localhost:{port}")
     typer.echo(f"  Log : {log}")
-    typer.echo(f"  Stop: kill {proc.pid}")
+    typer.echo("  Stop: nanobot webui stop")
 
 
 # ── Entry points ─────────────────────────────────────────────────────────────
