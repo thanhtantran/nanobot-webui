@@ -61,7 +61,7 @@
 | **PWA 支持** | 可安装为桌面 / 主屏幕应用；后台自动检测新版本并提示一键更新 |
 | **移动端适配** | 响应式布局，针对 iOS Safari 键盘弹出做专项适配，确保输入框始终可见 |
 | **深色模式** | 亮色 / 暗色一键切换，首次访问自动跟随系统偏好；暗色方案采用暖色调以匹配品牌色 |
-| **多语言（i18n）** | 内置 7 套界面语言：中文、繁體中文、English、日本語、한국어、Deutsch、Français，自动根据浏览器语言 / 时区检测，支持子菜单实时切换 |
+| **多语言（i18n）** | 内置 9 套界面语言：中文、繁體中文、English、日本語、한국어、Deutsch、Français、Português、Español，自动根据浏览器语言 / 时区检测，支持子菜单实时切换 |
 
 ---
 
@@ -75,21 +75,24 @@ pip install nanobot-webui
 
 > **从旧版本升级？** 请先卸载旧版本以避免冲突：
 > ```bash
-> pip uninstall -y nanobot-webui nanobot
+> pip uninstall -y nanobot-webui
 > pip install nanobot-webui
 > ```
 
-wheel 包内已内嵌编译好的 React 前端，**无需安装 Node.js**，安装后直接使用 `nanobot` 命令启动。
+wheel 包内已内嵌编译好的 React 前端，**无需安装 Node.js**，安装后请使用独立命令启动。
 
 ```bash
 # 前台启动（WebUI + nanobot 网关一体化）
-nanobot webui start
+nanobot-webui start
 
 # 指定端口
-nanobot webui start --port 9090
+nanobot-webui start --port 9090
 
 # 后台运行（推荐用于长期部署）
-nanobot webui start -d
+nanobot-webui start -d
+
+# 可选短别名
+webui start
 ```
 
 浏览器访问 **http://localhost:18780** - 默认账号：**admin / nanobot**，首次登录后请立即修改密码。
@@ -107,7 +110,9 @@ uv tool install nanobot-webui
 > uv tool upgrade nanobot-webui
 > ```
 
-`uv tool install` 会将 `nanobot` 安装到 uv 自己管理的隔离虚拟环境（`~/.local/share/uv/tools/nanobot-webui/`），可执行文件自动链接到 `~/.local/bin/`，不会影响当前项目工作区或系统 Python 环境。启动方式、可用选项、默认端口与 pip 安装完全一致。
+`uv tool install` 会将 `nanobot-webui` / `webui` 安装到 uv 自己管理的隔离虚拟环境（`~/.local/share/uv/tools/nanobot-webui/`），可执行文件自动链接到 `~/.local/bin/`，不会影响当前项目工作区或系统 Python 环境。
+
+> 推荐优先使用 `nanobot-webui`。这样可以避免与已有 `nanobot` 命令发生覆盖或冲突。
 
 ---
 
@@ -188,7 +193,7 @@ services:
 git clone https://github.com/Good0007/nanobot-webui.git
 cd nanobot-webui
 
-# 多阶段构建（bun 编译前端 → python 运行时）
+# 构建
 docker build -t nanobot-webui .
 
 # 运行
@@ -210,19 +215,30 @@ make down           # docker compose down
 make logs           # 跟踪 compose 日志
 make restart        # docker compose restart
 make build          # 构建本地单架构镜像
-make release-dated  # 构建并推送 :YYYY-MM-DD + :latest（多架构）
+make release        # buildx 推送 :<pyproject 默认版本> 和 :latest
+make release VERSION=0.2.7.post4  # 显式指定发布版本
 ```
 
 ---
 
 ## 命令行参考
 
-安装 `nanobot-webui` 后，`nanobot` 命令会新增以下子命令（`nanobot webui --help` 可查看完整列表）：
+安装后推荐使用 `nanobot-webui`（或短别名 `webui`）作为主命令入口。
 
-### `nanobot webui start` — 启动 WebUI
+同时保留了老用户兼容命令：
+
+```bash
+nanobot webui start
+nanobot webui status
+nanobot webui stop
+```
+
+新部署仍建议优先使用 `nanobot-webui`，命令语义更清晰，也更不容易和其他环境里的 `nanobot` 命令混淆。
+
+### `nanobot-webui start` — 启动 WebUI
 
 ```
-用法: nanobot webui start [OPTIONS]
+用法: nanobot-webui start [OPTIONS]
 
 选项:
   -p, --port INTEGER        HTTP 端口（默认: 18780）
@@ -237,40 +253,40 @@ make release-dated  # 构建并推送 :YYYY-MM-DD + :latest（多架构）
 ```
 
 ```bash
-nanobot webui start                          # 前台启动（Ctrl-C 停止）
-nanobot webui start --port 9090              # 自定义端口
-nanobot webui start -d                       # 后台启动（推荐长期运行）
-nanobot webui start -d --port 9090           # 后台 + 自定义端口
-nanobot webui start --workspace ~/myproject  # 指定工作区
-nanobot webui start --webui-only             # 仅 WebUI，nanobot 由系统服务管理
-nanobot webui start -d --webui-only          # 后台 + 仅 WebUI 模式
+nanobot-webui start                          # 前台启动（Ctrl-C 停止）
+nanobot-webui start --port 9090              # 自定义端口
+nanobot-webui start -d                       # 后台启动（推荐长期运行）
+nanobot-webui start -d --port 9090           # 后台 + 自定义端口
+nanobot-webui start --workspace ~/myproject  # 指定工作区
+nanobot-webui start --webui-only             # 仅 WebUI，nanobot 由系统服务管理
+nanobot-webui start -d --webui-only          # 后台 + 仅 WebUI 模式
 ```
 
 浏览器访问 **http://localhost:18780** — 默认账号：**admin / nanobot**，首次登录后请立即修改密码。
 
-### `nanobot webui stop` — 停止后台服务
+### `nanobot-webui stop` — 停止后台服务
 
 ```bash
-nanobot webui stop    # 发送 SIGTERM，6s 后强制 SIGKILL
+nanobot-webui stop    # 发送 SIGTERM，6s 后强制 SIGKILL
 ```
 
-### `nanobot webui status` — 查看服务状态
+### `nanobot-webui status` — 查看服务状态
 
 ```bash
-nanobot webui status  # 运行状态、PID、访问地址和日志路径
+nanobot-webui status  # 运行状态、PID、访问地址和日志路径
 ```
 
-### `nanobot webui restart` — 重启后台服务
+### `nanobot-webui restart` — 重启后台服务
 
 ```bash
-nanobot webui restart              # 停止后后台重启（复用当前端口）
-nanobot webui restart --port 9090  # 重启并切换端口
+nanobot-webui restart              # 停止后后台重启（复用当前端口）
+nanobot-webui restart --port 9090  # 重启并切换端口
 ```
 
-### `nanobot webui logs` — 查看日志
+### `nanobot-webui logs` — 查看日志
 
 ```
-用法: nanobot webui logs [OPTIONS]
+用法: nanobot-webui logs [OPTIONS]
 
 选项:
   -f, --follow          实时跟踪日志（类似 tail -f）
@@ -278,45 +294,12 @@ nanobot webui restart --port 9090  # 重启并切换端口
 ```
 
 ```bash
-nanobot webui logs              # 查看最近 50 行
-nanobot webui logs -f           # 实时跟踪
-nanobot webui logs -f -n 100    # 实时跟踪，显示最近 100 行
+nanobot-webui logs              # 查看最近 50 行
+nanobot-webui logs -f           # 实时跟踪
+nanobot-webui logs -f -n 100    # 实时跟踪，显示最近 100 行
 ```
 
 > 日志文件位于 `~/.nanobot/webui.log`
-
-### `nanobot channels login` — 通道扫码登录
-
-```bash
-nanobot channels login weixin          # 微信扫码登录
-nanobot channels login weixin --force  # 强制重新登录（清除已保存的凭证）
-```
-
-在终端打印 ASCII 二维码，用手机微信扫描完成登录。登录成功后将 Bot Token 保存到 `~/.nanobot/weixin/account.json`。
-
-> 适用于无界面服务器场景。WebUI 通道页面提供相同的登录流程，并显示图形二维码。
-
----
-
-### `nanobot status` — 查看运行状态
-
-```bash
-nanobot status  # 显示 WebUI 进程状态 + nanobot 配置信息
-```
-
-示例输出：
-
-```
-🐈 nanobot Status
-
-WebUI: ✓ running (PID 12345 • http://localhost:18780)
-Log  : /Users/xxx/.nanobot/webui.log
-
-Config: /Users/xxx/.nanobot/config.json ✓
-Workspace: /Users/xxx/.nanobot/workspace ✓
-Model: gpt-4o
-...
-```
 
 > **进程状态文件：** PID → `~/.nanobot/webui.pid`，端口 → `~/.nanobot/webui.port`
 
@@ -324,32 +307,39 @@ Model: gpt-4o
 
 ## 开发模式
 
-**前置条件：** Python ≥ 3.11，[Bun](https://bun.sh) ≥ 1.0
+**前置条件：** Python ≥ 3.11，[Bun](https://bun.sh) ≥ 1.0，[uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ```bash
-# 1. 克隆仓库并以可编辑模式安装后端
+# 终端 A：克隆仓库并安装后端（可编辑模式）
 git clone https://github.com/Good0007/nanobot-webui.git
 cd nanobot-webui
 uv venv               # 创建虚拟环境——不要修改中央 Python 安装。
 uv pip install -e .
 
-# 2. 启动后端
-uv run webui                          # API + 静态文件服务于 :18780
+# 终端 A：启动后端（推荐命令）
+uv run nanobot-webui start            # API + 静态文件服务于 :18780
 
-# 3. 启动前端开发服务器（另开终端）
+# 终端 B：启动前端开发服务器（另开终端）
 cd web
 bun install
 bun dev                              # http://localhost:5173（自动代理 /api → :18780）
 ```
 
+> 兼容旧命令：`uv run nanobot webui start` 仍可用，但新开发流程建议统一使用 `nanobot-webui`。
+
 生产构建：
 
 ```bash
+# 1) 构建前端静态资源
 cd web
 bun run build          # 产物输出到 web/dist/，setup.py 自动复制到 webui/web/dist/
+
+# 2) 回到项目根目录并启动后端服务静态资源
 cd ..
-nanobot webui          # 后端自动 serve webui/web/dist/
+uv run nanobot-webui start   # 后端自动 serve webui/web/dist/
 ```
+
+> 兼容旧命令：`uv run nanobot webui start`。
 
 ---
 
@@ -388,7 +378,7 @@ nanobot-webui/
 │   │       ├── users.py        #   CRUD /api/users（仅管理员）
 │   │       └── ws.py           #   WebSocket /ws/chat
 │   ├── patches/                # 最小化运行时 monkey-patch（非侵入式）
-│   │   ├── channels.py         #   空 allow_from → 允许所有人
+│   │   ├── channels.py         #   allow_from: "*" → 允许所有（与 nanobot 一致）
 │   │   ├── mcp_dynamic.py      #   MCP 服务器动态启用/禁用
 │   │   ├── provider.py         #   提供商热重载支持
 │   │   ├── session.py          #   会话持久化调整
@@ -399,8 +389,17 @@ nanobot-webui/
 ├── web/                        # React 18 + TypeScript 前端源码
 │   ├── src/
 │   │   ├── pages/              # 每个路由对应一个页面组件
+│   │   │   ├── Chat.tsx        #   实时对话页
 │   │   │   ├── Channels.tsx    #   IM 通道配置（含微信扫码登录）
-│   │   │   └── ...             #   Chat / Dashboard / Settings 等
+│   │   │   ├── CronJobs.tsx    #   定时任务
+│   │   │   ├── Dashboard.tsx   #   概览与统计
+│   │   │   ├── Login.tsx       #   认证
+│   │   │   ├── MCPServers.tsx  #   MCP 工具服务器
+│   │   │   ├── Settings.tsx    #   Agent / 提供商 / 工作区设置
+│   │   │   ├── Skills.tsx      #   技能管理
+│   │   │   ├── SystemConfig.tsx#   系统级配置
+│   │   │   ├── Tools.tsx       #   可用工具浏览
+│   │   │   └── Users.tsx       #   用户管理（仅管理员）
 │   │   ├── components/         # 布局、聊天、通用 UI 组件
 │   │   ├── hooks/              # TanStack Query 数据钩子
 │   │   ├── stores/             # Zustand 状态（认证、聊天）
@@ -443,7 +442,7 @@ nanobot-webui/
 | UI 组件 | shadcn/ui + Tailwind CSS v3 |
 | 客户端状态 | Zustand（含持久化中间件） |
 | 服务端状态 | TanStack Query v5 |
-| 国际化 | react-i18next（中 / 英） |
+| 国际化 | react-i18next（9 种界面语言） |
 | 主题 | next-themes（亮色 / 暗色 / 跟随系统） |
 | 实时通信 | WebSocket（`/ws/chat`） |
 | 包管理器 | Bun |
