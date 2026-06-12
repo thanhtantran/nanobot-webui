@@ -9,7 +9,6 @@ from nanobot.agent.loop import AgentLoop
 from nanobot.bus.queue import MessageBus
 from nanobot.config.schema import Config
 from nanobot.cron.service import CronService
-from nanobot.heartbeat.service import HeartbeatService
 from nanobot.session.manager import SessionManager
 
 from webui.api.channel_ext import ExtendedChannelManager
@@ -17,7 +16,11 @@ from webui.api.channel_ext import ExtendedChannelManager
 
 @dataclass
 class ServiceContainer:
-    """All live nanobot services, shared with FastAPI route handlers."""
+    """All live nanobot services, shared with FastAPI route handlers.
+
+    v0.2.1 note: HeartbeatService has been removed; heartbeat is now
+    cron-backed and managed internally by the AgentLoop.
+    """
 
     config: Config
     bus: MessageBus
@@ -25,12 +28,11 @@ class ServiceContainer:
     channels: ExtendedChannelManager
     session_manager: SessionManager
     cron: CronService
-    heartbeat: HeartbeatService
     make_provider: Callable = field(default=lambda cfg: None)
     webui_only: bool = False
 
     def reload_provider(self) -> None:
-        """Hot-swap the LLM provider and all runtime settings on agent and heartbeat."""
+        """Hot-swap the LLM provider and all runtime settings on agent."""
         from nanobot.providers.base import GenerationSettings
         d = self.config.agents.defaults
         t = self.config.tools
@@ -51,7 +53,6 @@ class ServiceContainer:
                 self.agent.dream.provider = new_provider
                 if hasattr(self.agent.dream, "_runner") and self.agent.dream._runner is not None:
                     self.agent.dream._runner.provider = new_provider
-            self.heartbeat.provider = new_provider
         # Always sync model and other mutable settings
         self.agent.model = d.model
         self.agent.max_iterations = d.max_tool_iterations
@@ -62,14 +63,12 @@ class ServiceContainer:
             reasoning_effort=d.reasoning_effort,
         )
         self.agent.provider.generation = gen
-        self.heartbeat.provider.generation = gen
         # Sync subagents model so new sub-tasks use the updated model.
         if hasattr(self.agent, "subagents") and self.agent.subagents is not None:
             self.agent.subagents.model = d.model
         # Re-register tools so exec/web enable toggles and scalar settings
         # (timeout, sandbox, path_append, restrict_to_workspace) take effect immediately.
-        self.agent.exec_config = t.exec
-        self.agent.web_config = t.web
+        self.agent.tools_config = t
         self.agent.restrict_to_workspace = t.restrict_to_workspace
         if hasattr(self.agent, "_register_default_tools"):
             self.agent.tools._tools.clear()

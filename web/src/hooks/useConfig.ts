@@ -37,6 +37,18 @@ export interface AgentSettings {
   exec_env?: Record<string, string>;
   exec_env_passthrough?: string[];
   // [AI:END]
+  // v0.2.1 AgentDefaults fields
+  max_concurrent_subagents?: number;
+  max_messages?: number;
+  session_ttl_minutes?: number;
+  consolidation_ratio?: number;
+  timezone?: string;
+  bot_name?: string;
+  bot_icon?: string;
+  provider_retry_mode?: string;
+  tool_hint_max_length?: number;
+  context_block_limit?: number | null;
+  fallback_models?: string[];
 }
 
 export interface GatewayConfig {

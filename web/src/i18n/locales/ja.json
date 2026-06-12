@@ -124,7 +124,8 @@
     "deleteConfirm": "このカスタムプロバイダーを削除してもよろしいですか？",
     "created": "プロバイダーを作成しました",
     "deleted": "プロバイダーを削除しました",
-    "nameRequired": "名前は必須です"
+    "nameRequired": "名前は必須です",
+    "auto": "自動検出"
   },
   "channels": {
     "title": "チャンネル",
@@ -142,7 +143,9 @@
       "matrix": "Matrix",
       "mochat": "MoChat",
       "wecom": "WeCom",
-      "web": "ウェブ"
+      "web": "ウェブ",
+      "signal": "Signal",
+      "msteams": "Teams"
     },
     "weixin": {
       "qrLogin": "QRコードスキャン",
@@ -414,7 +417,21 @@
     "dreamMaxIterations": "Max Iterations",
     "channelsConfig": "Channels Config",
     "sendMaxRetries": "Max Send Retries",
-    "transcriptionProvider": "Voice Transcription Provider"
+    "transcriptionProvider": "Voice Transcription Provider",
+    "maxConcurrentSubagents": "Max Concurrent SubAgents",
+    "maxMessages": "Max Replay Messages",
+    "sessionTtlMinutes": "Session Idle Compact (min)",
+    "consolidationRatio": "Consolidation Ratio",
+    "timezone": "Timezone",
+    "botName": "Bot Name",
+    "botIcon": "Bot Icon",
+    "providerRetryMode": "Provider Retry Mode",
+    "toolHintMaxLength": "Tool Hint Max Length",
+    "contextBlockLimit": "Content Block Limit",
+    "unlimited": "Unlimited",
+    "fallbackModels": "Fallback Models (one per line)",
+    "fallbackModelsPlaceholder": "Models to try in order when the primary fails",
+    "fallbackModelsEmpty": "Configure API keys and model lists in the Providers tab first"
   },
   "s3": {
     "title": "S3オブジェクトストレージ",

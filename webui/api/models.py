@@ -84,6 +84,18 @@ class AgentSettingsResponse(BaseModel):
     exec_env: dict[str, str]
     exec_env_passthrough: list[str]
     # [AI:END]
+    # v0.2.1 AgentDefaults fields
+    max_concurrent_subagents: int = 1
+    max_messages: int = 120
+    session_ttl_minutes: int = 0
+    consolidation_ratio: float = 0.5
+    timezone: str = "UTC"
+    bot_name: str = "nanobot"
+    bot_icon: str = "🐈"
+    provider_retry_mode: str = "standard"
+    tool_hint_max_length: int = 40
+    context_block_limit: int | None = None
+    fallback_models: list[str] = Field(default_factory=list)
 
 
 class AgentSettingsRequest(BaseModel):
@@ -120,6 +132,18 @@ class AgentSettingsRequest(BaseModel):
     exec_env: dict[str, str] | None = None
     exec_env_passthrough: list[str] | None = None
     # [AI:END]
+    # v0.2.1 AgentDefaults fields
+    max_concurrent_subagents: int | None = None
+    max_messages: int | None = None
+    session_ttl_minutes: int | None = None
+    consolidation_ratio: float | None = None
+    timezone: str | None = None
+    bot_name: str | None = None
+    bot_icon: str | None = None
+    provider_retry_mode: str | None = None
+    tool_hint_max_length: int | None = None
+    context_block_limit: int | None = None
+    fallback_models: list[str] | None = None
 
 
 class HeartbeatConfigModel(BaseModel):

@@ -126,6 +126,19 @@ async def get_agent_settings(
         exec_env=get_exec_env(),
         exec_env_passthrough=get_exec_env_passthrough(),
         # [AI:END]
+        max_concurrent_subagents=d.max_concurrent_subagents,
+        max_messages=d.max_messages,
+        session_ttl_minutes=d.session_ttl_minutes,
+        consolidation_ratio=d.consolidation_ratio,
+        timezone=d.timezone,
+        bot_name=d.bot_name,
+        bot_icon=d.bot_icon,
+        provider_retry_mode=d.provider_retry_mode,
+        tool_hint_max_length=d.tool_hint_max_length,
+        context_block_limit=d.context_block_limit,
+        # fallback_models: 提取简单字符串列表 (排除 InlineFallbackConfig 对象)
+        fallback_models=[m if isinstance(m, str) else getattr(m, 'model', str(m))
+                         for m in d.fallback_models],
     )
 
 
@@ -208,6 +221,28 @@ async def update_agent_settings(
         from webui.utils.webui_config import set_exec_env_passthrough
         set_exec_env_passthrough(body.exec_env_passthrough)
     # [AI:END]
+    if body.max_concurrent_subagents is not None:
+        d.max_concurrent_subagents = body.max_concurrent_subagents
+    if body.max_messages is not None:
+        d.max_messages = body.max_messages
+    if body.session_ttl_minutes is not None:
+        d.session_ttl_minutes = body.session_ttl_minutes
+    if body.consolidation_ratio is not None:
+        d.consolidation_ratio = body.consolidation_ratio
+    if body.timezone is not None:
+        d.timezone = body.timezone
+    if body.bot_name is not None:
+        d.bot_name = body.bot_name
+    if body.bot_icon is not None:
+        d.bot_icon = body.bot_icon
+    if body.provider_retry_mode is not None:
+        d.provider_retry_mode = body.provider_retry_mode
+    if body.tool_hint_max_length is not None:
+        d.tool_hint_max_length = body.tool_hint_max_length
+    if body.context_block_limit is not None:
+        d.context_block_limit = body.context_block_limit
+    if body.fallback_models is not None:
+        d.fallback_models = body.fallback_models
 
     save_config(svc.config)
     svc.reload_provider()

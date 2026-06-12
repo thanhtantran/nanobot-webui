@@ -124,7 +124,8 @@
     "deleteConfirm": "이 사용자 지정 제공자를 삭제하시겠습니까?",
     "created": "제공자가 생성되었습니다",
     "deleted": "제공자가 삭제되었습니다",
-    "nameRequired": "이름을 입력해야 합니다"
+    "nameRequired": "이름을 입력해야 합니다",
+    "auto": "자동 감지"
   },
   "channels": {
     "title": "채널",
@@ -142,7 +143,9 @@
       "matrix": "Matrix",
       "mochat": "MoChat",
       "wecom": "WeCom",
-      "web": "웹"
+      "web": "웹",
+      "signal": "Signal",
+      "msteams": "Teams"
     },
     "weixin": {
       "qrLogin": "QR 코드 스캔",
@@ -414,7 +417,21 @@
     "dreamMaxIterations": "Max Iterations",
     "channelsConfig": "Channels Config",
     "sendMaxRetries": "Max Send Retries",
-    "transcriptionProvider": "Voice Transcription Provider"
+    "transcriptionProvider": "Voice Transcription Provider",
+    "maxConcurrentSubagents": "Max Concurrent SubAgents",
+    "maxMessages": "Max Replay Messages",
+    "sessionTtlMinutes": "Session Idle Compact (min)",
+    "consolidationRatio": "Consolidation Ratio",
+    "timezone": "Timezone",
+    "botName": "Bot Name",
+    "botIcon": "Bot Icon",
+    "providerRetryMode": "Provider Retry Mode",
+    "toolHintMaxLength": "Tool Hint Max Length",
+    "contextBlockLimit": "Content Block Limit",
+    "unlimited": "Unlimited",
+    "fallbackModels": "Fallback Models (one per line)",
+    "fallbackModelsPlaceholder": "Models to try in order when the primary fails",
+    "fallbackModelsEmpty": "Configure API keys and model lists in the Providers tab first"
   },
   "s3": {
     "title": "S3 오브젝트 스토리지",

@@ -5,8 +5,9 @@ Patch: OpenAICompatProvider.chat
     provider is transparently switched to /v1/responses.
     The decision is cached per api_base so subsequent calls skip the trial.
 
-Note: nanobot v0.1.4.post6 removed CustomProvider and LiteLLMProvider; all
-OpenAI-compatible endpoints (including "custom") now use OpenAICompatProvider.
+v0.2.1 note: ``nanobot.providers.factory.make_provider()`` is now the
+canonical provider factory.  We expose a wrapper that delegates to it;
+custom providers are injected via the ``config.py`` _match_provider patch.
 """
 
 from __future__ import annotations
@@ -14,80 +15,13 @@ import tempfile
 
 
 def make_provider_patched(config):
+    """Create the LLM provider via nanobot's built-in factory.
+
+    Custom providers from webui_config.json are picked up automatically
+    via the patched ``Config._match_provider`` (config.py patch).
     """
-    Replicate and patch nanobot's _make_provider logic.
-    - Adds support for custom providers from webui_config.json
-    """
-    import sys
-    from nanobot.providers.registry import find_by_name
-    from webui.utils.webui_config import get_custom_providers
-
-    model: str = config.agents.defaults.model
-    provider_name: str = config.get_provider_name(model)
-    p = config.get_provider(model)
-    spec = find_by_name(provider_name) if provider_name else None
-    backend = getattr(spec, 'backend', None) or "openai_compat"
-
-    # 1. Custom dynamically injected providers OR the built-in "custom" provider
-    custom_providers = get_custom_providers()
-    is_custom_dynamic = provider_name and provider_name in custom_providers
-
-    if provider_name == "custom" or is_custom_dynamic:
-        from nanobot.providers.openai_compat_provider import OpenAICompatProvider
-        return OpenAICompatProvider(
-            api_key=p.api_key if p else "no-key",
-            api_base=config.get_api_base(model) or "http://localhost:8000/v1",
-            default_model=model,
-            extra_headers=p.extra_headers if p else None,
-            spec=spec,
-        )
-
-    if backend == "openai_codex" or model.startswith("openai-codex/"):
-        from nanobot.providers.openai_codex_provider import OpenAICodexProvider
-        return OpenAICodexProvider(default_model=model)
-
-    if backend == "azure_openai":
-        from nanobot.providers.azure_openai_provider import AzureOpenAIProvider
-        if not p or not p.api_key or not p.api_base:
-            print(
-                "Warning: Azure OpenAI requires api_key and api_base. "
-                "Set them in Settings → Providers.",
-                file=sys.stderr,
-            )
-        else:
-            return AzureOpenAIProvider(
-                api_key=p.api_key,
-                api_base=p.api_base,
-                default_model=model,
-            )
-
-    if backend == "anthropic":
-        from nanobot.providers.anthropic_provider import AnthropicProvider
-        return AnthropicProvider(
-            api_key=p.api_key if p else None,
-            api_base=config.get_api_base(model),
-            default_model=model,
-            extra_headers=p.extra_headers if p else None,
-        )
-
-    # Default: openai_compat (covers all remaining providers including gateways/local)
-    from nanobot.providers.openai_compat_provider import OpenAICompatProvider
-    if not model.startswith("bedrock/") and not (p and p.api_key) and not (
-        spec and (spec.is_oauth or spec.is_local or spec.is_direct)
-    ):
-        print(
-            "Warning: No API key configured. "
-            "Start the WebUI and set one in Settings → Providers.",
-            file=sys.stderr,
-        )
-
-    return OpenAICompatProvider(
-        api_key=p.api_key if p else None,
-        api_base=config.get_api_base(model),
-        default_model=model,
-        extra_headers=p.extra_headers if p else None,
-        spec=spec,
-    )
+    from nanobot.providers.factory import make_provider
+    return make_provider(config)
 
 
 def apply() -> None:
@@ -95,6 +29,12 @@ def apply() -> None:
     import uuid
 
     import httpx
+
+    if not hasattr(apply, "_applied"):
+        apply._applied = True  # type: ignore[attr-defined]
+    else:
+        return
+
     from nanobot.providers.base import LLMResponse, ToolCallRequest
 
     # Since nanobot v0.1.4.post6, all OpenAI-compatible providers use OpenAICompatProvider.
@@ -167,7 +107,6 @@ def apply() -> None:
                 input_items.append({"role": role, "content": content})
 
         # Drop items with null/empty content to avoid 400 validation errors.
-        # assistant entries that only contain tool_calls have no content field — keep those.
         def _is_valid_item(item: dict) -> bool:
             itype = item.get("type")
             if itype in ("function_call", "function_call_output"):
@@ -270,11 +209,10 @@ def apply() -> None:
         import os
         import datetime
 
-        _debug_log_flag = os.getenv("NANOBOT_DEBUG_LLM")  # e.g. /tmp/llm_debug.log
+        _debug_log_flag = os.getenv("NANOBOT_DEBUG_LLM")
         _debug_log_path = os.path.join(tempfile.gettempdir(), "nanobot_llm_debug.log")
 
         def _write_debug_log(api_base: str, messages, tools) -> None:
-            """Write LLM request payload to a dedicated debug log file, one JSON line per call."""
             if not _debug_log_flag:
                 return
             try:
@@ -293,17 +231,17 @@ def apply() -> None:
 
         async def _patched_chat(self, messages, tools=None, model=None,
                                 max_tokens=4096, temperature=0.7, reasoning_effort=None,
-                                tool_choice=None):
+                                tool_choice=None, **kwargs):
             # Fast path: already confirmed this base needs Responses API.
             if self.api_base in _responses_api_bases:
                 return await _call_responses_api(self, messages, tools, model, max_tokens, temperature)
 
             _write_debug_log(self.api_base, messages, tools)
-            # 打印消息长度和 tools 长度，帮助调试
-            _logger.debug("LLM request '{}' messages_len={} tools_len={}", self.api_base, len(messages), len(tools) if tools else 0)
+            _logger.debug("LLM request '{}' messages_len={} tools_len={}",
+                          self.api_base, len(messages), len(tools) if tools else 0)
             result: LLMResponse = await original_chat(
                 self, messages, tools, model, max_tokens, temperature, reasoning_effort,
-                tool_choice=tool_choice
+                tool_choice=tool_choice, **kwargs,
             )
 
             # Detect legacy-protocol rejection and auto-switch.
@@ -317,10 +255,3 @@ def apply() -> None:
 
     for cls in _provider_classes:
         cls.chat = _make_patched_chat(cls.chat)  # type: ignore[method-assign]
-
-    # Patch nanobot CLI's _make_provider so CLI commands use our patched factory
-    try:
-        import nanobot.cli.commands as _commands
-        _commands._make_provider = make_provider_patched
-    except Exception:
-        pass

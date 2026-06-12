@@ -18,6 +18,7 @@ build
 *.venv-test*
 .DS_Store
 nanobot
+docs/tmp
 uv.lock
 web/tsconfig.tsbuildinfo
 dev-dist

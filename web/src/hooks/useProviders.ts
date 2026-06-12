@@ -28,6 +28,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   gemini: "Google Gemini",
   moonshot: "Moonshot",
   minimax: "MiniMax",
+  minimax_anthropic: "MiniMax (Anthropic)",
   aihubmix: "AiHubMix",
   siliconflow: "SiliconFlow",
   volcengine: "VolcEngine",
@@ -38,6 +39,22 @@ const PROVIDER_LABELS: Record<string, string> = {
   custom: "Custom",
   openai_codex: "OpenAI Codex",
   github_copilot: "GitHub Copilot",
+  // v0.2.0+ new providers
+  bedrock: "AWS Bedrock",
+  nvidia: "NVIDIA NIM",
+  longcat: "LongCat",
+  atomic_chat: "Atomic Chat",
+  xiaomi_mimo: "Xiaomi MIMO",
+  mistral: "Mistral",
+  huggingface: "Hugging Face",
+  lm_studio: "LM Studio",
+  ovms: "OpenVINO Model Server",
+  qianfan: "Qianfan",
+  // v0.2.1 new providers
+  ant_ling: "Ant Ling",
+  skywork: "Skywork",
+  novita: "Novita AI",
+  stepfun: "Step Fun",
 };
 
 const PROVIDER_DEFAULT_BASE_URLS: Record<string, string> = {
@@ -58,6 +75,15 @@ const PROVIDER_DEFAULT_BASE_URLS: Record<string, string> = {
   byteplus: "https://ark.ap-southeast.bytepluses.com/api/v3",
   byteplus_coding_plan: "https://ark.ap-southeast.bytepluses.com/api/coding/v3",
   azure_openai: "https://<your-resource-name>.openai.azure.com",
+  // v0.2.0+ new providers
+  mistral: "https://api.mistral.ai/v1",
+  huggingface: "https://api-inference.huggingface.co/v1",
+  lm_studio: "http://localhost:1234/v1",
+  novita: "https://api.novita.ai/v3/openai",
+  skywork: "https://api.skywork.cn/v1",
+  ant_ling: "https://api.antling.cn/v1",
+  stepfun: "https://api.stepfun.com/v1",
+  longcat: "https://api.longcat.chat/v1",
 };
 
 export function getProviderLabel(name: string): string {

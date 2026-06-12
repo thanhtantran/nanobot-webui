@@ -124,7 +124,8 @@
     "deleteConfirm": "确定要删除此自定义提供商吗？",
     "created": "提供商已创建",
     "deleted": "提供商已删除",
-    "nameRequired": "请输入名称"
+    "nameRequired": "请输入名称",
+    "auto": "自动检测"
   },
   "channels": {
     "title": "通道",
@@ -142,7 +143,9 @@
       "matrix": "Matrix",
       "mochat": "MoChat",
       "wecom": "企业微信",
-      "web": "网页"
+      "web": "网页",
+      "signal": "Signal",
+      "msteams": "Teams"
     },
     "weixin": {
       "qrLogin": "扫码登录",
@@ -414,7 +417,21 @@
       "user": "用户偏好与个性化设置",
       "tools": "可用工具与权限配置",
       "heartbeat": "定时心跳任务模板"
-    }
+    },
+    "maxConcurrentSubagents": "最大并发 SubAgent 数",
+    "maxMessages": "最大回放消息数",
+    "sessionTtlMinutes": "会话空闲压缩时间 (分钟)",
+    "consolidationRatio": "记忆压缩比率",
+    "timezone": "时区",
+    "botName": "机器人名称",
+    "botIcon": "机器人图标",
+    "providerRetryMode": "Provider 重试模式",
+    "toolHintMaxLength": "工具提示截断长度",
+    "contextBlockLimit": "Content Block 上限",
+    "unlimited": "不限制",
+    "fallbackModels": "回退模型列表 (每行一个)",
+    "fallbackModelsPlaceholder": "主模型失败时按顺序尝试的模型",
+    "fallbackModelsEmpty": "请先在「模型提供商」标签中配置 API Key 和模型列表"
   },
   "s3": {
     "title": "S3 对象存储",

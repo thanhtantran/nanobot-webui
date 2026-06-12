@@ -1,10 +1,12 @@
-"""[MCPDynamic] patch — per-server AsyncExitStack for dynamic MCP load/unload.
+"""[MCPDynamic] patch — per-server MCP management with WebUI enable/disable toggles.
 
-Replaces the single shared _mcp_stack with a per-server dict so individual
-servers can be connected/disconnected without tearing down the entire agent.
+Replaces AgentLoop._connect_mcp to respect per-server enabled/disabled state
+from webui_config.json.  Also adds ``toggle_mcp_server()`` for runtime
+load/unload of individual servers.
 
-New method added to AgentLoop:
-    async toggle_mcp_server(name, cfg, enabled) -> None
+v0.2.1 note: MCP state (_mcp_servers, _mcp_stacks, _mcp_connected) is still
+managed as instance attributes on AgentLoop.  ``connect_missing_servers()``
+is the preferred incremental connection API.
 """
 
 from __future__ import annotations
@@ -12,60 +14,47 @@ from __future__ import annotations
 
 def apply() -> None:
     import asyncio
-    import inspect
-    from contextlib import AsyncExitStack
 
     from nanobot.agent.loop import AgentLoop
-    from nanobot.agent.tools.mcp import connect_mcp_servers
-
-    _connect_uses_stack = len(inspect.signature(connect_mcp_servers).parameters) >= 3
-
-    async def _connect_subset(servers: dict, registry):
-        """Compatibility shim for nanobot MCP connector signature changes."""
-        if not _connect_uses_stack:
-            return await connect_mcp_servers(servers, registry)
-
-        # Legacy signature: connect_mcp_servers(servers, registry, stack)
-        connected: dict[str, AsyncExitStack] = {}
-        for name, cfg in servers.items():
-            stack = AsyncExitStack()
-            await stack.__aenter__()
-            try:
-                await connect_mcp_servers({name: cfg}, registry, stack)
-                connected[name] = stack
-            except Exception:
-                try:
-                    await stack.aclose()
-                except Exception:
-                    pass
-                raise
-        return connected
+    from nanobot.agent.tools.mcp import connect_missing_servers
 
     # ------------------------------------------------------------------
-    # _connect_mcp: connect each enabled server into its own stack
+    # _connect_mcp: only connect enabled servers (respect WebUI toggles)
     # ------------------------------------------------------------------
     async def _connect_mcp_patched(self) -> None:
         from webui.utils.webui_config import is_mcp_server_enabled
 
         if self._mcp_connected or self._mcp_connecting or not self._mcp_servers:
             return
-        self._mcp_connecting = True
+
+        # Filter to only MCP servers enabled in the WebUI.  Disabled servers
+        # are kept in _mcp_servers (so the config is preserved) but excluded
+        # from the connection pass.
+        enabled_servers = {
+            name: cfg
+            for name, cfg in self._mcp_servers.items()
+            if is_mcp_server_enabled(name)
+        }
+        if not enabled_servers:
+            return
+
+        # connect_missing_servers reads from state._mcp_servers, so we
+        # temporarily swap in only the enabled subset.
+        saved = dict(self._mcp_servers)
+        self._mcp_servers = enabled_servers
         try:
-            for name, cfg in self._mcp_servers.items():
-                if not is_mcp_server_enabled(name):
-                    continue
-                if name in self._mcp_stacks:
-                    continue  # already connected
-                try:
-                    self._mcp_stacks.update(await _connect_subset({name: cfg}, self.tools))
-                except Exception:
-                    continue
-            self._mcp_connected = True
+            await connect_missing_servers(self, self.tools)
         finally:
-            self._mcp_connecting = False
+            # Restore the full server map (disabled servers remain unconnected
+            # because they were excluded from the connection pass).
+            # Keep any newly created stacks for enabled servers.
+            merged = dict(saved)
+            # _mcp_servers may have been modified; carry over enabled entries
+            merged.update(self._mcp_servers)
+            self._mcp_servers = merged
 
     # ------------------------------------------------------------------
-    # close_mcp: close all per-server stacks
+    # close_mcp: close all per-server stacks (unchanged from v0.2.1 built-in)
     # ------------------------------------------------------------------
     async def _close_mcp_patched(self) -> None:
         if self._background_tasks:
@@ -102,10 +91,13 @@ def apply() -> None:
             # Don't double-connect
             if name in self._mcp_stacks:
                 return
+            # Use connect_missing_servers for incremental connection
+            saved = dict(self._mcp_servers)
+            self._mcp_servers = {name: cfg}
             try:
-                self._mcp_stacks.update(await _connect_subset({name: cfg}, self.tools))
-            except Exception:
-                raise
+                await connect_missing_servers(self, self.tools)
+            finally:
+                self._mcp_servers = saved
 
     AgentLoop._connect_mcp = _connect_mcp_patched  # type: ignore[method-assign]
     AgentLoop.close_mcp = _close_mcp_patched  # type: ignore[method-assign]

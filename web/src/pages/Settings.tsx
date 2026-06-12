@@ -39,8 +39,12 @@ const PROVIDER_ICONS: Record<string, string> = {
   anthropic: "🟠", openai: "🟢", openrouter: "🔵", deepseek: "🐋",
   volcengine: "🌋", volcengine_coding_plan: "🌋", byteplus: "🟣", byteplus_coding_plan: "🟣",
   groq: "⚡", zhipu: "🧠", dashscope: "☁️",
-  vllm: "🖥️", ollama: "🦙", gemini: "💎", moonshot: "🌙", minimax: "🔮",
+  vllm: "🖥️", ollama: "🦙", gemini: "💎", moonshot: "🌙", minimax: "🔮", minimax_anthropic: "🔮",
   aihubmix: "🎛️", siliconflow: "💧", azure_openai: "🪟", custom: "⚙️",
+  bedrock: "☁️", nvidia: "🟩", longcat: "🐱", atomic_chat: "⚛️",
+  xiaomi_mimo: "📱", mistral: "🌬️", huggingface: "🤗", lm_studio: "💻",
+  ovms: "🔲", qianfan: "⛵", ant_ling: "🐜", skywork: "☀️",
+  novita: "🆕", stepfun: "👣", openai_codex: "📝", github_copilot: "👨‍💻",
 };
 
 type ProviderDraft = Partial<{ api_key: string; api_base: string; extra_headers: string }>;
@@ -367,6 +371,19 @@ function AgentTab() {
   const selectedProviderModels = providers?.find(p => p.name === provider)?.models ?? [];
   // [AI:END]
 
+  // v0.2.1 new AgentDefaults fields
+  const [maxConcurrentSubagents, setMaxConcurrentSubagents] = useState("1");
+  const [maxMessages, setMaxMessages] = useState("120");
+  const [sessionTtlMinutes, setSessionTtlMinutes] = useState("0");
+  const [consolidationRatio, setConsolidationRatio] = useState("0.5");
+  const [timezone, setTimezone] = useState("UTC");
+  const [botName, setBotName] = useState("nanobot");
+  const [botIcon, setBotIcon] = useState("🐈");
+  const [providerRetryMode, setProviderRetryMode] = useState("standard");
+  const [toolHintMaxLength, setToolHintMaxLength] = useState("40");
+  const [contextBlockLimit, setContextBlockLimit] = useState("");
+  const [fallbackModels, setFallbackModels] = useState<string[]>([]);
+
   if (agent && !agentInited) {
     setModel(agent.model ?? "");
     setProvider(agent.provider ?? "");
@@ -406,6 +423,18 @@ function AgentTab() {
     // Channels
     setSendMaxRetries(String(agent.channels_send_max_retries ?? 3));
     setTranscriptionProvider(agent.channels_transcription_provider ?? "groq");
+    // v0.2.1 AgentDefaults fields
+    setMaxConcurrentSubagents(String(agent.max_concurrent_subagents ?? 1));
+    setMaxMessages(String(agent.max_messages ?? 120));
+    setSessionTtlMinutes(String(agent.session_ttl_minutes ?? 0));
+    setConsolidationRatio(String(agent.consolidation_ratio ?? 0.5));
+    setTimezone(agent.timezone ?? "UTC");
+    setBotName(agent.bot_name ?? "nanobot");
+    setBotIcon(agent.bot_icon ?? "🐈");
+    setProviderRetryMode(agent.provider_retry_mode ?? "standard");
+    setToolHintMaxLength(String(agent.tool_hint_max_length ?? 40));
+    setContextBlockLimit(agent.context_block_limit ? String(agent.context_block_limit) : "");
+    setFallbackModels(agent.fallback_models ?? []);
     setAgentInited(true);
   }
 
@@ -419,6 +448,17 @@ function AgentTab() {
       context_window_tokens: memoryWindow ? Number(memoryWindow) : undefined,
       reasoning_effort: reasoningEffort && reasoningEffort !== "__default__" ? reasoningEffort : undefined,
       workspace: workspace || undefined,
+      max_concurrent_subagents: maxConcurrentSubagents ? Number(maxConcurrentSubagents) : undefined,
+      max_messages: maxMessages ? Number(maxMessages) : undefined,
+      session_ttl_minutes: sessionTtlMinutes ? Number(sessionTtlMinutes) : undefined,
+      consolidation_ratio: consolidationRatio ? Number(consolidationRatio) : undefined,
+      timezone: timezone || undefined,
+      bot_name: botName || undefined,
+      bot_icon: botIcon || undefined,
+      provider_retry_mode: providerRetryMode || undefined,
+      tool_hint_max_length: toolHintMaxLength ? Number(toolHintMaxLength) : undefined,
+      context_block_limit: contextBlockLimit ? Number(contextBlockLimit) : null,
+      fallback_models: fallbackModels.length > 0 ? fallbackModels : undefined,
     }, { onSuccess: () => toast.success(t("settings.saved")) });
   };
 
@@ -536,7 +576,7 @@ function AgentTab() {
                     // [AI:END]
                   }}>
                     <SelectTrigger><SelectValue placeholder={t("settings.provider")} /></SelectTrigger>
-                    <SelectContent>{availableProviders.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    <SelectContent>{availableProviders.map((p) => <SelectItem key={p} value={p}>{p === "auto" ? `🔄 ${t("providers.auto")}` : `${PROVIDER_ICONS[p] ?? "🤖"} ${getProviderLabel(p)}`}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 {/* [AI:START] tool=copilot date=2026-03-12 author=chenweikang */}
@@ -588,6 +628,98 @@ function AgentTab() {
                 <div className="space-y-1">
                   <Label>{t("settings.workspace")}</Label>
                   <Input value={workspace} onChange={(e) => setWorkspace(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.maxConcurrentSubagents")}</Label>
+                  <Input type="number" min="1" max="20" value={maxConcurrentSubagents} onChange={(e) => setMaxConcurrentSubagents(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.maxMessages")}</Label>
+                  <Input type="number" min="0" value={maxMessages} onChange={(e) => setMaxMessages(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.sessionTtlMinutes")}</Label>
+                  <Input type="number" min="0" value={sessionTtlMinutes} onChange={(e) => setSessionTtlMinutes(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.consolidationRatio")}</Label>
+                  <Input type="number" step="0.05" min="0.1" max="0.95" value={consolidationRatio} onChange={(e) => setConsolidationRatio(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.timezone")}</Label>
+                  <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="UTC" />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.botName")}</Label>
+                  <Input value={botName} onChange={(e) => setBotName(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.botIcon")}</Label>
+                  <Input value={botIcon} onChange={(e) => setBotIcon(e.target.value)} className="text-2xl w-16" maxLength={4} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.providerRetryMode")}</Label>
+                  <Select value={providerRetryMode} onValueChange={setProviderRetryMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">standard</SelectItem>
+                      <SelectItem value="persistent">persistent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.toolHintMaxLength")}</Label>
+                  <Input type="number" min="20" max="500" value={toolHintMaxLength} onChange={(e) => setToolHintMaxLength(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("settings.contextBlockLimit")}</Label>
+                  <Input type="number" value={contextBlockLimit} onChange={(e) => setContextBlockLimit(e.target.value)} placeholder={t("settings.unlimited")} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>{t("settings.fallbackModels")}</Label>
+                  {(() => {
+                    // 收集所有已配置 provider 的模型列表
+                    const allModels: { model: string; provider: string }[] = [];
+                    (providers ?? []).filter(p => p.has_key).forEach(p => {
+                      (p.models ?? []).forEach(m => {
+                        if (!allModels.some(x => x.model === m)) {
+                          allModels.push({ model: m, provider: p.name });
+                        }
+                      });
+                    });
+                    if (allModels.length === 0) {
+                      return <p className="text-xs text-muted-foreground">{t("settings.fallbackModelsEmpty")}</p>;
+                    }
+                    const toggleModel = (m: string) => {
+                      setFallbackModels(prev =>
+                        prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]
+                      );
+                    };
+                    return (
+                      <div className="flex flex-wrap gap-1.5 border rounded-md p-2 min-h-[36px]">
+                        {allModels.map(({ model, provider }) => {
+                          const idx = fallbackModels.indexOf(model);
+                          const selected = idx >= 0;
+                          return (
+                            <button
+                              key={model}
+                              type="button"
+                              onClick={() => toggleModel(model)}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-colors ${
+                                selected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted hover:bg-muted-foreground/20"
+                              }`}
+                              title={`${getProviderLabel(provider)}`}
+                            >
+                              {selected && <span className="font-bold text-[10px]">{idx + 1}</span>}
+                              {model}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="flex justify-end sm:justify-start">

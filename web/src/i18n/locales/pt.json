@@ -124,7 +124,8 @@
     "deleteConfirm": "Tem certeza de que deseja excluir este provedor personalizado?",
     "created": "Provedor criado",
     "deleted": "Provedor excluído",
-    "nameRequired": "Nome é obrigatório"
+    "nameRequired": "Nome é obrigatório",
+    "auto": "Auto-detectar"
   },
   "channels": {
     "title": "Canais",
@@ -142,7 +143,9 @@
       "matrix": "Matrix",
       "mochat": "MoChat",
       "wecom": "WeCom",
-      "web": "Web"
+      "web": "Web",
+      "signal": "Signal",
+      "msteams": "Microsoft Teams"
     },
     "weixin": {
       "qrLogin": "Escanear QR Code",
@@ -414,7 +417,21 @@
     "dreamMaxIterations": "Max Iterations",
     "channelsConfig": "Channels Config",
     "sendMaxRetries": "Max Send Retries",
-    "transcriptionProvider": "Voice Transcription Provider"
+    "transcriptionProvider": "Voice Transcription Provider",
+    "maxConcurrentSubagents": "Max Concurrent SubAgents",
+    "maxMessages": "Max Replay Messages",
+    "sessionTtlMinutes": "Session Idle Compact (min)",
+    "consolidationRatio": "Consolidation Ratio",
+    "timezone": "Timezone",
+    "botName": "Bot Name",
+    "botIcon": "Bot Icon",
+    "providerRetryMode": "Provider Retry Mode",
+    "toolHintMaxLength": "Tool Hint Max Length",
+    "contextBlockLimit": "Content Block Limit",
+    "unlimited": "Unlimited",
+    "fallbackModels": "Fallback Models (one per line)",
+    "fallbackModelsPlaceholder": "Models to try in order when the primary fails",
+    "fallbackModelsEmpty": "Configure API keys and model lists in the Providers tab first"
   },
   "s3": {
     "title": "Armazenamento de Objetos S3",

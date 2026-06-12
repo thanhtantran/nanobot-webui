@@ -12,4 +12,6 @@ export const CHANNEL_ICONS: Record<string, string> = {
   qq: "🐧",
   matrix: "🔷",
   mochat: "💼",
+  signal: "📶",
+  msteams: "🟣",
 };

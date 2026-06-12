@@ -23,6 +23,7 @@ _CHANNEL_NAMES = [
     "weixin", "wecom",
     "telegram", "whatsapp", "discord", "feishu", "dingtalk",
     "email", "slack", "qq", "matrix", "mochat",
+    "signal", "msteams",
 ]
 
 
@@ -69,6 +70,8 @@ _CHANNEL_CONFIG_CLASS: dict[str, tuple[str, str]] = {
     "qq":        ("nanobot.channels.qq",        "QQConfig"),
     "matrix":    ("nanobot.channels.matrix",    "MatrixConfig"),
     "mochat":    ("nanobot.channels.mochat",    "MochatConfig"),
+    "signal":    ("nanobot.channels.signal",    "SignalConfig"),
+    "msteams":   ("nanobot.channels.msteams",   "MSTeamsConfig"),
 }
 
 

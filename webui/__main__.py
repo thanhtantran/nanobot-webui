@@ -50,11 +50,10 @@ async def main(
     from nanobot.agent.loop import AgentLoop
     from nanobot.bus.queue import MessageBus
     from nanobot.bus.events import OutboundMessage
-    from nanobot.config.loader import load_config
+    from nanobot.config.loader import load_config, get_config_path, save_config
     from nanobot.config.paths import get_cron_dir
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronJob
-    from nanobot.heartbeat.service import HeartbeatService
     from nanobot.session.manager import SessionManager
     from nanobot.utils.helpers import sync_workspace_templates
 
@@ -62,12 +61,9 @@ async def main(
     from webui.api.gateway import ServiceContainer, start_api_server
     from webui.patches.provider import make_provider_patched
 
-    from nanobot.config.loader import get_config_path, save_config
-
     config = load_config()
 
     # Auto-initialize config on first run (equivalent to `nanobot onboard`).
-    # This ensures config.json and workspace templates exist before we start.
     if not get_config_path().exists():
         save_config(config)
         logger.info("First run: created default config at {}", get_config_path())
@@ -86,7 +82,7 @@ async def main(
     )
     session_manager = SessionManager(config.workspace_path)
 
-    # Migrate legacy global cron store to workspace-scoped path (one-time, default workspace only).
+    # Migrate legacy global cron store to workspace-scoped path (one-time).
     if _is_default_workspace(config.workspace_path):
         legacy_path = get_cron_dir() / "jobs.json"
         new_path = config.workspace_path / "cron" / "jobs.json"
@@ -98,31 +94,33 @@ async def main(
     cron_store_path = config.workspace_path / "cron" / "jobs.json"
     cron = CronService(cron_store_path)
 
-    # Build AgentLoop kwargs — compatible with both nanobot 0.1.4 and 0.1.5+
+    # Build AgentLoop kwargs — compatible with nanobot >= 0.2.1
+    # v0.2.0+ consolidated web_config/exec_config into tools_config.
     _agent_kwargs: dict = dict(
         bus=bus,
         provider=provider,
         workspace=config.workspace_path,
         model=config.agents.defaults.model,
         max_iterations=config.agents.defaults.max_tool_iterations,
+        max_concurrent_subagents=config.agents.defaults.max_concurrent_subagents,
         context_window_tokens=config.agents.defaults.context_window_tokens,
-        web_config=config.tools.web,
-        exec_config=config.tools.exec,
+        max_tool_result_chars=config.agents.defaults.max_tool_result_chars,
+        tool_hint_max_length=config.agents.defaults.tool_hint_max_length,
+        tools_config=config.tools,
         cron_service=cron,
         restrict_to_workspace=config.tools.restrict_to_workspace,
         session_manager=session_manager,
         mcp_servers=config.tools.mcp_servers,
         channels_config=config.channels,
+        timezone=config.agents.defaults.timezone,
+        session_ttl_minutes=config.agents.defaults.session_ttl_minutes,
+        consolidation_ratio=config.agents.defaults.consolidation_ratio,
+        max_messages=config.agents.defaults.max_messages,
+        disabled_skills=config.agents.defaults.disabled_skills,
+        model_presets=config.model_presets,
+        model_preset=config.agents.defaults.model_preset or None,
     )
-    # nanobot >= 0.1.5 uses web_config; older uses web_search_config + web_proxy
-    try:
-        _agent_kwargs["web_config"] = config.tools.web
-        agent = AgentLoop(**_agent_kwargs)
-    except TypeError:
-        del _agent_kwargs["web_config"]
-        _agent_kwargs["web_search_config"] = config.tools.web.search
-        _agent_kwargs["web_proxy"] = config.tools.web.proxy or None
-        agent = AgentLoop(**_agent_kwargs)
+    agent = AgentLoop(**_agent_kwargs)
 
     # ------------------------------------------------------------------ cron
     async def on_cron_job(job: CronJob) -> str | None:
@@ -140,15 +138,10 @@ async def main(
             cron_token = cron_tool.set_cron_context(True)
 
         # Web-channel jobs store the originating session key in payload.to
-        # (format: "web:<user_id>:<hex>") so we can push the result back there.
         to = job.payload.to or ""
         is_web_session = job.payload.channel == "web" and to.startswith("web:")
         is_web = job.payload.channel == "web" and bool(to)
 
-        # Always execute in an isolated timestamped session so:
-        #   1. Each run gets a clean LLM context (v0.2.4 design)
-        #   2. The internal [Scheduled Task] trigger message never appears in
-        #      the user's originating session
         exec_session_key = f"cron:{job.id}:{int(time.time() * 1000)}"
 
         try:
@@ -174,7 +167,7 @@ async def main(
             ))
 
         # For web-session jobs: append only the final AI response to the
-        # originating session — no trigger message pollution, history untouched.
+        # originating session — no trigger message pollution.
         if is_web_session and response:
             from datetime import datetime
             orig_sess = agent.sessions.get_or_create(to)
@@ -185,18 +178,11 @@ async def main(
             orig_sess.updated_at = datetime.now()
             agent.sessions.save(orig_sess)
 
-        # Push result to any active WebSocket connections so the browser
-        # refreshes the session and shows a toast notification.
+        # Push result to any active WebSocket connections.
         if is_web and response:
             from webui.api.routes.ws import push_cron_result
-            # Extract user_id regardless of payload.to format:
-            #   new: "web:1:abc123" → "1"
-            #   legacy: "1"        → "1"
             parts = to.split(":")
             push_uid = parts[1] if len(parts) >= 3 else to
-            # session_key in the push payload tells the frontend which session
-            # to refresh — the originating session for new format, cron session
-            # for legacy.
             notify_session = to if is_web_session else exec_session_key
             await push_cron_result(push_uid, {
                 "type": "cron_result",
@@ -214,51 +200,6 @@ async def main(
     channels = ExtendedChannelManager(config, bus)
     channels.webui_only = webui_only
 
-    def _pick_heartbeat_target() -> tuple[str, str]:
-        enabled = set(channels.enabled_channels)
-        for item in session_manager.list_sessions():
-            key = item.get("key") or ""
-            if ":" not in key:
-                continue
-            channel, chat_id = key.split(":", 1)
-            if channel in {"cli", "system", "web"}:
-                continue
-            if channel in enabled and chat_id:
-                return channel, chat_id
-        return "cli", "direct"
-
-    # ------------------------------------------------------------- heartbeat
-    async def on_heartbeat_execute(tasks: str) -> str:
-        channel, chat_id = _pick_heartbeat_target()
-
-        async def _silent(*_args: object, **_kwargs: object) -> None:
-            pass
-
-        return await agent.process_direct(
-            tasks,
-            session_key="heartbeat",
-            channel=channel,
-            chat_id=chat_id,
-            on_progress=_silent,
-        )
-
-    async def on_heartbeat_notify(response: str) -> None:
-        channel, chat_id = _pick_heartbeat_target()
-        if channel == "cli":
-            return
-        await bus.publish_outbound(OutboundMessage(channel=channel, chat_id=chat_id, content=response))
-
-    hb_cfg = config.gateway.heartbeat
-    heartbeat = HeartbeatService(
-        workspace=config.workspace_path,
-        provider=provider,
-        model=agent.model,
-        on_execute=on_heartbeat_execute,
-        on_notify=on_heartbeat_notify,
-        interval_s=hb_cfg.interval_s,
-        enabled=hb_cfg.enabled,
-    )
-
     _svc_kwargs = dict(
         config=config,
         bus=bus,
@@ -266,14 +207,10 @@ async def main(
         channels=channels,
         session_manager=session_manager,
         cron=cron,
-        heartbeat=heartbeat,
         make_provider=make_provider_patched,
+        webui_only=webui_only,
     )
-    try:
-        container = ServiceContainer(**_svc_kwargs, webui_only=webui_only)
-    except TypeError:
-        container = ServiceContainer(**_svc_kwargs)
-        container.webui_only = webui_only
+    container = ServiceContainer(**_svc_kwargs)
 
     if channels.enabled_channels:
         logger.info("Channels enabled: {}", ", ".join(channels.enabled_channels))
@@ -282,7 +219,7 @@ async def main(
 
     if webui_only:
         logger.info(
-            "WebUI-only mode: IM channels / heartbeat will NOT be started. "
+            "WebUI-only mode: IM channels will NOT be started. "
             "An external nanobot process is expected to handle IM traffic."
         )
 
@@ -297,7 +234,6 @@ async def main(
                     start_api_server(container, host=web_host, port=web_port),
                 )
             else:
-                await heartbeat.start()
                 await asyncio.gather(
                     agent.run(),
                     channels.start_all(),
@@ -307,8 +243,6 @@ async def main(
             logger.info("Shutting down…")
         finally:
             await agent.close_mcp()
-            if not webui_only:
-                heartbeat.stop()
             cron.stop()
             agent.stop()
             if not webui_only:

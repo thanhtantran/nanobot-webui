@@ -168,11 +168,12 @@ def _extract_interaction_log(messages: list) -> str:
 def apply() -> None:
     """Monkey-patch SubagentManager to emit progress events.
 
-    Targets nanobot ≥ 0.1.5 which has:
-    - ``_announce_result`` (not ``_announce``)
-    - ``_run_subagent(self, task_id, task, label, origin)``
-    - ``AgentRunner`` + ``AgentRunSpec`` for the execution loop
-    - GlobTool / GrepTool, exec_config.enable / sandbox, web_config.enable
+    Targets nanobot >= 0.2.1 which has:
+    - _build_tools(workspace, tools_config) for isolated tool construction
+    - _run_subagent(self, task_id, task, label, origin, status, ...) with
+      mandatory ``status: SubagentStatus`` param
+    - _announce_result(..., origin_message_id=None)
+    - ToolLoader-based tool building (no more manual GlobTool/GrepTool registration)
     """
     from nanobot.agent.subagent import SubagentManager
     from nanobot.bus.events import OutboundMessage
@@ -180,8 +181,8 @@ def apply() -> None:
     _original_announce_result = SubagentManager._announce_result
 
     # -----------------------------------------------------------------------
-    # Patch 1: _run_subagent — delegate to v0.1.5 AgentRunner with a progress
-    # hook that pushes tool-hint events to the WebUI / external channels.
+    # Patch 1: _run_subagent — use v0.2.1 _build_tools() for tool registration
+    # while adding our progress hook for WebUI / external channels.
     # -----------------------------------------------------------------------
     async def _run_subagent_patched(
         self: SubagentManager,
@@ -189,17 +190,15 @@ def apply() -> None:
         task: str,
         label: str,
         origin: dict[str, str],
-        status: Any = None,
+        status: Any,
+        origin_message_id: str | None = None,
+        temperature: float | None = None,
+        workspace_scope: Any = None,
     ) -> None:
-        """Augmented _run_subagent: uses AgentRunner + hook for progress push."""
+        """Augmented _run_subagent: uses v0.2.1 ToolLoader + hook for progress push."""
         from nanobot.agent.hook import AgentHook, AgentHookContext
         from nanobot.agent.runner import AgentRunSpec
-        from nanobot.agent.skills import BUILTIN_SKILLS_DIR
-        from nanobot.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
-        from nanobot.agent.tools.registry import ToolRegistry
-        from nanobot.agent.tools.search import GlobTool, GrepTool
-        from nanobot.agent.tools.shell import ExecTool
-        from nanobot.agent.tools.web import WebFetchTool, WebSearchTool
+        from nanobot.agent.subagent import WorkspaceScope, bind_workspace_scope, reset_workspace_scope
 
         channel = origin.get("channel", "")
         chat_id = str(origin.get("chat_id", ""))
@@ -258,83 +257,65 @@ def apply() -> None:
 
         logger.info("Subagent [{}] starting task: {}", task_id, label)
 
+        # --- Build tools using v0.2.1 _build_tools (ToolLoader) ---
+        root = workspace_scope.project_path if isinstance(workspace_scope, WorkspaceScope) else self.workspace
+        cfg = None
+        if isinstance(workspace_scope, WorkspaceScope):
+            cfg = self._subagent_tools_config()
+            cfg.restrict_to_workspace = workspace_scope.restrict_to_workspace
+        tools = self._build_tools(workspace=root, tools_config=cfg)
+
+        system_prompt = self._build_subagent_prompt(workspace=root)
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": task},
+        ]
+
+        # --- Checkpoint callback that also updates status ---
+        async def _on_checkpoint(payload: dict) -> None:
+            if hasattr(status, "phase"):
+                status.phase = payload.get("phase", getattr(status, "phase", "initializing"))
+            if hasattr(status, "iteration"):
+                status.iteration = payload.get("iteration", getattr(status, "iteration", 0))
+
+        # --- Compute per-session LLM timeout ---
+        sess_key = origin.get("session_key")
+        llm_timeout = None
+        if self._llm_wall_timeout_for_session:
+            llm_timeout = self._llm_wall_timeout_for_session(sess_key)
+
+        token = bind_workspace_scope(workspace_scope) if isinstance(workspace_scope, WorkspaceScope) else None
         try:
-            # Build tools — mirrors v0.1.5 _run_subagent exactly
-            tools = ToolRegistry()
-            allowed_dir = self.workspace if (self.restrict_to_workspace or self.exec_config.sandbox) else None
-            extra_read = [BUILTIN_SKILLS_DIR] if allowed_dir else None
-            tools.register(ReadFileTool(workspace=self.workspace, allowed_dir=allowed_dir, extra_allowed_dirs=extra_read))
-            tools.register(WriteFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(EditFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(ListDirTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(GlobTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(GrepTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            if self.exec_config.enable:
-                tools.register(ExecTool(
-                    working_dir=str(self.workspace),
-                    timeout=self.exec_config.timeout,
-                    restrict_to_workspace=self.restrict_to_workspace,
-                    sandbox=self.exec_config.sandbox,
-                    path_append=self.exec_config.path_append,
-                ))
-            if self.web_config.enable:
-                tools.register(WebSearchTool(config=self.web_config.search, proxy=self.web_config.proxy))
-                tools.register(WebFetchTool(proxy=self.web_config.proxy))
-
-            system_prompt = self._build_subagent_prompt()
-            messages: list[dict[str, Any]] = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": task},
-            ]
-
             result = await self.runner.run(AgentRunSpec(
                 initial_messages=messages,
                 tools=tools,
                 model=self.model,
-                max_iterations=15,
+                temperature=temperature,
+                max_iterations=self.max_iterations,
                 max_tool_result_chars=self.max_tool_result_chars,
                 hook=_ProgressHook(),
                 max_iterations_message="Task completed but no final response was generated.",
                 error_message=None,
                 fail_on_tool_error=True,
+                checkpoint_callback=_on_checkpoint,
+                session_key=sess_key,
+                workspace=root,
+                llm_timeout_s=llm_timeout,
             ))
+        finally:
+            if token is not None:
+                reset_workspace_scope(token)
 
-            # Handle tool_error stop (partial progress)
-            if result.stop_reason == "tool_error":
-                error_result = self._format_partial_progress(result)
-                if channel == "web":
-                    save_cb = _save_turn_registry.get(chat_key)
-                    if save_cb:
-                        try:
-                            await save_cb(result.messages)
-                        except Exception:
-                            pass
-                await self._announce_result(task_id, label, task, error_result, origin, "error")
-                return
+        if hasattr(status, "phase"):
+            status.phase = "done"
+        if hasattr(status, "stop_reason"):
+            status.stop_reason = result.stop_reason
 
-            # Handle generic runner error
-            if result.stop_reason == "error":
-                error_msg = result.error or "Error: subagent execution failed."
-                if channel == "web":
-                    save_cb = _save_turn_registry.get(chat_key)
-                    if save_cb:
-                        try:
-                            await save_cb(result.messages)
-                        except Exception:
-                            pass
-                await self._announce_result(task_id, label, task, error_msg, origin, "error")
-                return
-
-            final_result = result.final_content or "Task completed but no final response was generated."
-            logger.info("Subagent [{}] completed successfully", task_id)
-
-            # Extract inter-agent communication log from full message history
-            interaction_log = _extract_interaction_log(result.messages)
-            enriched_result = final_result
-            if interaction_log:
-                enriched_result = f"{interaction_log}\n\n---\n\n**最终输出：**\n{enriched_result}"
-
-            # Persist full message history to WebUI session
+        # --- Handle tool_error stop (partial progress) ---
+        if result.stop_reason == "tool_error":
+            if hasattr(status, "tool_events"):
+                status.tool_events = list(result.tool_events)
+            error_result = self._format_partial_progress(result)
             if channel == "web":
                 save_cb = _save_turn_registry.get(chat_key)
                 if save_cb:
@@ -342,19 +323,47 @@ def apply() -> None:
                         await save_cb(result.messages)
                     except Exception:
                         pass
+            await self._announce_result(
+                task_id, label, task, error_result, origin, "error", origin_message_id,
+            )
+            return
 
-            if status is not None:
-                status.phase = "done"
-                status.stop_reason = result.stop_reason
-            await self._announce_result(task_id, label, task, enriched_result, origin, "ok")
+        # --- Handle generic runner error ---
+        if result.stop_reason == "error":
+            error_msg = result.error or "Error: subagent execution failed."
+            if channel == "web":
+                save_cb = _save_turn_registry.get(chat_key)
+                if save_cb:
+                    try:
+                        await save_cb(result.messages)
+                    except Exception:
+                        pass
+            await self._announce_result(
+                task_id, label, task, error_msg, origin, "error", origin_message_id,
+            )
+            return
 
-        except Exception as e:
-            error_msg = f"Error: {e}"
-            logger.error("Subagent [{}] failed: {}", task_id, e)
-            if status is not None:
-                status.phase = "error"
-                status.error = str(e)
-            await self._announce_result(task_id, label, task, error_msg, origin, "error")
+        final_result = result.final_content or "Task completed but no final response was generated."
+        logger.info("Subagent [{}] completed successfully", task_id)
+
+        # Extract inter-agent communication log from full message history
+        interaction_log = _extract_interaction_log(result.messages)
+        enriched_result = final_result
+        if interaction_log:
+            enriched_result = f"{interaction_log}\n\n---\n\n**最终输出：**\n{enriched_result}"
+
+        # Persist full message history to WebUI session
+        if channel == "web":
+            save_cb = _save_turn_registry.get(chat_key)
+            if save_cb:
+                try:
+                    await save_cb(result.messages)
+                except Exception:
+                    pass
+
+        await self._announce_result(
+            task_id, label, task, enriched_result, origin, "ok", origin_message_id,
+        )
 
     # -----------------------------------------------------------------------
     # Patch 2: _announce_result — for web channel, bypass the bus (which goes
@@ -369,6 +378,7 @@ def apply() -> None:
         result: str,
         origin: dict[str, str],
         status: str,
+        origin_message_id: str | None = None,
     ) -> None:
         channel = origin.get("channel", "")
         chat_id = str(origin.get("chat_id", ""))
@@ -394,7 +404,10 @@ def apply() -> None:
                 except Exception as exc:
                     logger.warning("Subagent announce to WebSocket failed: {}", exc)
             # Fallback: if no callback registered, use original path
-            await _original_announce_result(self, task_id, label, task, result, origin, status)
+            await _original_announce_result(
+                self, task_id, label, task, result, origin, status,
+                origin_message_id=origin_message_id,
+            )
         else:
             # Non-web channels: use a custom InboundMessage with _subagent_label
             # metadata so the patched _process_message can save the incoming
@@ -448,13 +461,21 @@ def apply() -> None:
     #   • The LLM still sees the announcement as role="user" (valid).
     #   • The session JSONL stores it as role="sub_tool" with name=<label>,
     #     so the WebUI renders it as a SubAgent card.
+    #
+    # NOTE: v0.2.1 introduced _process_system_message for handling subagent
+    # results.  We still patch _process_message for backward compatibility
+    # with the existing sub_tool role remapping logic.
     # -----------------------------------------------------------------------
     try:
         from nanobot.agent.loop import AgentLoop
         _original_process_message = AgentLoop._process_message
 
-        async def _process_message_patched(self, msg, session_key=None, on_progress=None, **kwargs):
-            result = await _original_process_message(self, msg, session_key=session_key, on_progress=on_progress, **kwargs)
+        async def _process_message_patched(self, msg, session_key=None, on_progress=None, on_stream=None, on_stream_end=None, pending_queue=None, **kwargs):
+            result = await _original_process_message(
+                self, msg, session_key=session_key, on_progress=on_progress,
+                on_stream=on_stream, on_stream_end=on_stream_end,
+                pending_queue=pending_queue, **kwargs,
+            )
 
             # After original _process_message completed (which already called
             # _save_turn + sessions.save), check if this was a subagent announcement.
