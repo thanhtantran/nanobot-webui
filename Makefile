@@ -27,11 +27,11 @@ build-web:
 # Full dist: builds frontend first, then creates sdist + wheel
 .PHONY: dist
 dist: build-web
-	python -m build
+	python3 -m build
 
 .PHONY: dist-wheel
 dist-wheel: build-web
-	python -m build --wheel
+	python3 -m build --wheel
 
 # ── Docker (single-platform, local) ───────────
 .PHONY: build
@@ -95,7 +95,7 @@ build-py: build-web
 	rm -rf webui/web/dist
 	cp -r web/dist webui/web/dist
 	rm -rf dist/ build/ nanobot_webui.egg-info/
-	python -m build
+	python3 -m build
 
 .PHONY: publish
 publish: build-py
